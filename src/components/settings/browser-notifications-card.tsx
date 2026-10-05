@@ -21,6 +21,7 @@ import {
   writeBrowserNotifyPref,
   type BrowserNotifyPermission,
 } from '@/lib/notifications/browser-notify';
+import { playLoudNotificationSound } from '@/lib/notifications/sound';
 
 // `Notification.permission` has no change event of its own. Re-read it
 // whenever the tab regains focus (the user may have flipped the site
@@ -86,10 +87,12 @@ export function BrowserNotificationsCard({ className }: { className?: string }) 
 
   const sendTest = () => {
     try {
+      playLoudNotificationSound();
       new Notification(t('testTitle'), {
         body: t('testBody'),
         icon: '/icon',
         tag: 'wacrm-test-notification',
+        requireInteraction: true,
       });
     } catch {
       toast.error(t('unsupported'));
@@ -149,16 +152,33 @@ export function BrowserNotificationsCard({ className }: { className?: string }) 
               </p>
             )}
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={sendTest}
-              disabled={!checked}
-            >
-              <BellRing className="size-4" />
-              {t('sendTest')}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={sendTest}
+                disabled={!checked}
+                className="cursor-pointer"
+              >
+                <BellRing className="size-4 text-[#00a884]" />
+                {t('sendTest')}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void playLoudNotificationSound();
+                  toast.success('🔊 Playing loud iPhone notification chime!');
+                }}
+                className="cursor-pointer"
+              >
+                <Bell className="size-4 text-[#00a884]" />
+                Test iPhone Note (180%)
+              </Button>
+            </div>
           </>
         )}
       </CardContent>

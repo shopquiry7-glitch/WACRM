@@ -39,6 +39,9 @@ import {
   X,
   DollarSign,
   LayoutTemplate,
+  MessageSquare,
+  Send,
+  ArrowUpRight,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { contactHandle } from '@/lib/whatsapp/wa-identity';
@@ -70,6 +73,8 @@ export function ContactDetailView({
   // find-or-creates the conversation, so no inbound message is required.
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [sendingTemplate, setSendingTemplate] = useState(false);
+  const [directMessage, setDirectMessage] = useState('');
+  const [sendingDirect, setSendingDirect] = useState(false);
 
   // Details tab
   const [editName, setEditName] = useState('');
@@ -378,6 +383,37 @@ export function ContactDetailView({
     }
   }
 
+  async function handleSendDirectMessage() {
+    if (!contactId || !directMessage.trim()) return;
+    setSendingDirect(true);
+    try {
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_id: contactId,
+          message_type: 'text',
+          content_text: directMessage.trim(),
+        }),
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const reason = payload?.error || `HTTP ${res.status}`;
+        toast.error(`Failed to send message: ${reason}`);
+        return;
+      }
+
+      toast.success('Message sent successfully!');
+      setDirectMessage('');
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'network error';
+      toast.error(`Failed to send message: ${reason}`);
+    } finally {
+      setSendingDirect(false);
+    }
+  }
+
   function getInitials(name?: string | null) {
     if (!name) return '?';
     return name
@@ -444,20 +480,75 @@ export function ContactDetailView({
                   </div>
                 </div>
               </div>
-              <div className="mt-3">
-                <Button
-                  size="sm"
-                  onClick={() => setTemplatePickerOpen(true)}
-                  disabled={sendingTemplate}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  {sendingTemplate ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <LayoutTemplate className="size-4" />
-                  )}
-                  {t('sendTemplateBtn')}
-                </Button>
+
+              {/* Direct Message Box matching user request */}
+              <div className="mt-3.5 space-y-2 rounded-lg border border-border bg-muted/40 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <MessageSquare className="size-3.5 text-[#00a884]" />
+                    Send Direct Message
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (contact?.phone) {
+                        window.location.href = `/inbox?search=${encodeURIComponent(contact.phone)}`;
+                      } else {
+                        window.location.href = '/inbox';
+                      }
+                    }}
+                    className="text-[11px] text-[#00a884] hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                  >
+                    Open in Inbox <ArrowUpRight className="size-3" />
+                  </button>
+                </div>
+
+                <Textarea
+                  value={directMessage}
+                  onChange={(e) => setDirectMessage(e.target.value)}
+                  placeholder="Type a message to send directly to this client..."
+                  rows={2}
+                  className="text-xs bg-background/80 border-border resize-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      void handleSendDirectMessage();
+                    }
+                  }}
+                />
+
+                <div className="flex items-center justify-between pt-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setTemplatePickerOpen(true)}
+                    disabled={sendingTemplate || sendingDirect}
+                    className="text-xs h-8 gap-1.5 text-muted-foreground hover:text-foreground"
+                    title="Send an approved WhatsApp template"
+                  >
+                    <LayoutTemplate className="size-3.5" />
+                    Send Template
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    onClick={handleSendDirectMessage}
+                    disabled={sendingDirect || !directMessage.trim()}
+                    className="bg-[#00a884] hover:bg-[#00a884]/90 text-white text-xs h-8 gap-1.5 font-medium px-4 shadow-sm cursor-pointer"
+                  >
+                    {sendingDirect ? (
+                      <>
+                        <Loader2 className="size-3.5 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="size-3.5" />
+                        Send Message
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </SheetHeader>
 

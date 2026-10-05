@@ -17,13 +17,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ModeToggle } from "@/components/layout/mode-toggle";
+import { NotificationSoundPopover } from "@/components/layout/notification-sound-popover";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "dashboard",
+  "/feature-store": "featureStore",
   "/inbox": "inbox",
   "/notifications": "notifications",
   "/contacts": "contacts",
+  "/lead-extractor": "leadExtractor",
   "/pipelines": "pipelines",
+  "/invoices": "invoices",
   "/broadcasts": "broadcasts",
   "/automations": "automations",
   "/settings": "settings",
@@ -48,7 +52,7 @@ import { useTranslations } from "next-intl";
 export function Header({ onOpenSidebar }: HeaderProps) {
   const t = useTranslations("Header");
   const pathname = usePathname();
-  const { profile, signOut } = useAuth();
+  const { profile, accountRole, signOut } = useAuth();
   const titleKey = getPageTitleKey(pathname);
 
   const initial =
@@ -74,6 +78,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2">
+        <NotificationSoundPopover />
         <ModeToggle />
 
         <DropdownMenu>
@@ -92,9 +97,20 @@ export function Header({ onOpenSidebar }: HeaderProps) {
               {initial}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden text-sm font-medium text-foreground sm:inline">
-            {profile?.full_name ?? t("defaultUser")}
-          </span>
+          <div className="hidden flex-col items-start leading-tight sm:flex text-left">
+            <span className="text-sm font-semibold text-foreground">
+              {profile?.full_name ?? t("defaultUser")}
+            </span>
+            {accountRole && (
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {accountRole === "admin"
+                  ? "Developer"
+                  : accountRole === "agent"
+                  ? "Sales Agent"
+                  : "Owner"}
+              </span>
+            )}
+          </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
@@ -102,9 +118,20 @@ export function Header({ onOpenSidebar }: HeaderProps) {
           className="min-w-56 bg-popover text-popover-foreground ring-border"
         >
           <div className="px-2 py-1.5">
-            <p className="truncate text-sm font-medium text-foreground">
-              {profile?.full_name ?? t("defaultUser")}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-sm font-semibold text-foreground">
+                {profile?.full_name ?? t("defaultUser")}
+              </p>
+              {accountRole && (
+                <span className="inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider border-primary/30 bg-primary/10 text-primary">
+                  {accountRole === "admin"
+                    ? "Developer"
+                    : accountRole === "agent"
+                    ? "Sales"
+                    : accountRole}
+                </span>
+              )}
+            </div>
             <p className="truncate text-xs text-muted-foreground">
               {profile?.email ?? ""}
             </p>

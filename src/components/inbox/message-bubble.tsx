@@ -38,6 +38,8 @@ interface MessageBubbleProps {
    * stays inline and non-clickable.
    */
   onOpenMedia?: (messageId: string) => void;
+  /** Opens the template picker dialog when a 24h error occurs. */
+  onOpenTemplates?: () => void;
 }
 
 /**
@@ -47,6 +49,13 @@ interface MessageBubbleProps {
  */
 function failureReason(message: Message): string | null {
   if (message.status !== "failed" || !message.error_title) return null;
+  if (
+    message.error_code === 131049 ||
+    message.error_title?.toLowerCase().includes("healthy ecosystem engagement") ||
+    message.error_details?.toLowerCase().includes("healthy ecosystem engagement")
+  ) {
+    return "Meta Rate Limit (131049): Delivery paused by WhatsApp because multiple messages were sent without customer reply. Wait for recipient to reply or use a Utility template.";
+  }
   return message.error_details
     ? `${message.error_title} — ${message.error_details}`
     : message.error_title;
@@ -245,6 +254,7 @@ export function MessageBubble({
   currentUserId,
   onToggleReaction,
   onOpenMedia,
+  onOpenTemplates,
 }: MessageBubbleProps) {
   const t = useTranslations("Inbox.bubble");
 
@@ -317,12 +327,14 @@ export function MessageBubble({
         </div>
       </div>
       {failure && (
-        <p
-          className="mt-0.5 px-1 text-[10px] leading-tight text-muted-foreground"
-          title={failure}
-        >
-          {t("notDelivered")}: {failure}
-        </p>
+        <div className="mt-1 space-y-0.5">
+          <p
+            className="px-1 text-[11px] leading-tight text-destructive font-medium flex items-center gap-1"
+            title={failure}
+          >
+            <span>{t("notDelivered")}: {failure}</span>
+          </p>
+        </div>
       )}
       {reactions && reactions.length > 0 && onToggleReaction && (
         <MessageReactions

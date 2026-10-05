@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { formatCurrency } from '@/lib/currency'
@@ -9,6 +10,14 @@ import {
   UserPlus,
   DollarSign,
   Send,
+  Shield,
+  Globe,
+  Sparkles,
+  ReceiptText,
+  ArrowRight,
+  Settings,
+  MapPin,
+  ShoppingBag,
 } from 'lucide-react'
 
 import {
@@ -40,7 +49,8 @@ type RangeDays = 7 | 30 | 90
 
 export default function DashboardPage() {
   const t = useTranslations('Dashboard.page')
-  const { defaultCurrency } = useAuth()
+  const { defaultCurrency, profile, accountRole, isOwner, isAdmin } = useAuth()
+  const isExecutiveAdmin = isOwner || isAdmin || accountRole === 'owner' || accountRole === 'admin' || !accountRole
   const [metrics, setMetrics] = useState<MetricsBundle | null>(null)
   const [metricsLoading, setMetricsLoading] = useState(true)
 
@@ -130,6 +140,106 @@ export default function DashboardPage() {
           {t('description')}
         </p>
       </div>
+
+      {/* Role-Specific Workspace Banner */}
+      {isExecutiveAdmin ? (
+        <div className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-500/10 via-sky-500/10 to-background p-4 sm:p-5 shadow-xs">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                <Shield className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base font-bold text-foreground">
+                    Admin &amp; Executive Workspace
+                  </h2>
+                  <span className="rounded-full border border-purple-500/40 bg-purple-500/15 px-2.5 py-0.5 text-[10px] font-bold text-purple-400 uppercase tracking-wider">
+                    {profile?.full_name ? `${profile.full_name} • Full Admin` : "Super Admin"}
+                  </span>
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-500 dark:text-emerald-400">
+                    All Features 100% Free &amp; Unlocked
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
+                  Deep Google Maps Lead Extractor, unlimited WhatsApp features, and Feature Store tools are active with full admin access. Client pricing is hidden.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <Link
+                href="/lead-extractor"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-95 transition-all"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                Google Maps Lead Extractor
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+              <Link
+                href="/feature-store"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-purple-500/30 bg-card px-3.5 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <ShoppingBag className="h-3.5 w-3.5 text-purple-400" />
+                Feature Store (All Free)
+              </Link>
+              <Link
+                href="/domain-automation"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <Globe className="h-3.5 w-3.5 text-sky-400" />
+                Domain Automations
+              </Link>
+              <Link
+                href="/settings?tab=whatsapp"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <Settings className="h-3.5 w-3.5" />
+                WhatsApp API
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : accountRole === 'agent' ? (
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-background to-teal-500/5 p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-foreground">
+                    Sales &amp; Customer Workspace
+                  </h2>
+                  <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">
+                    {profile?.full_name ? `${profile.full_name} • Sales Agent` : "Sales Agent"}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Chat with WhatsApp leads, manage deal stages, create professional invoices &amp; quotes, and close sales.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <Link
+                href="/inbox"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500 transition-colors"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Open WhatsApp Inbox
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+              <Link
+                href="/invoices"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <ReceiptText className="h-3.5 w-3.5" />
+                Invoices &amp; Quotes
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Metric cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

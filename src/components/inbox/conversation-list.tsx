@@ -9,10 +9,11 @@ import {
 } from "@/lib/inbox/conversations";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, ChevronDown, X } from "lucide-react";
+import { Search, ChevronDown, X, MessageSquarePlus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -21,6 +22,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { NewChatDialog } from "./new-chat-dialog";
+import { getCountryFromPhone, formatPhoneDisplay } from "@/lib/whatsapp/phone-country";
 
 interface ConversationListProps {
   activeConversationId: string | null;
@@ -54,6 +57,7 @@ export function ConversationList({
   resyncToken = 0,
 }: ConversationListProps) {
   const t = useTranslations("Inbox.conversationList");
+  const [newChatOpen, setNewChatOpen] = useState(false);
   
   const FILTER_OPTIONS: { label: string; value: InboxFilter }[] = useMemo(() => [
     { label: t("filterAll"), value: "all" },
@@ -217,6 +221,17 @@ export function ConversationList({
     [onSelect]
   );
 
+  const handleConversationCreated = useCallback(
+    (newConv: Conversation) => {
+      onConversationsLoaded([
+        newConv,
+        ...conversations.filter((c) => c.id !== newConv.id),
+      ]);
+      onSelect(newConv);
+    },
+    [conversations, onConversationsLoaded, onSelect],
+  );
+
   const activeFilter = FILTER_OPTIONS.find((o) => o.value === filter);
 
   return (
@@ -224,16 +239,27 @@ export function ConversationList({
     // the single pane showing; fixed 320px on desktop where it shares the
     // row with the thread + contact sidebar.
     <div className="flex h-full w-full flex-col border-r border-border bg-card lg:w-80">
-      {/* Search + Filter */}
+      {/* Search + Filter + New Chat */}
       <div className="space-y-2 border-b border-border p-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={handleSearchChange}
-            placeholder={t("searchPlaceholder")}
-            className="border-border bg-muted pl-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={handleSearchChange}
+              placeholder={t("searchPlaceholder")}
+              className="border-border bg-muted pl-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
+            />
+          </div>
+          <Button
+            size="icon"
+            className="h-9 w-9 shrink-0 bg-[#00a884] hover:bg-[#00a884]/90 text-white rounded-lg shadow-sm"
+            onClick={() => setNewChatOpen(true)}
+            title="Start New Chat / Add Number"
+            aria-label="Start New Chat"
+          >
+            <MessageSquarePlus className="h-4 w-4" />
+          </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-1">
@@ -402,8 +428,17 @@ export function ConversationList({
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="px-4 py-12 text-center">
+          <div className="px-4 py-12 text-center flex flex-col items-center">
             <p className="text-sm text-muted-foreground">{t("noConversations")}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 gap-1.5 border-[#00a884] text-[#00a884] hover:bg-[#00a884]/10 rounded-full"
+              onClick={() => setNewChatOpen(true)}
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+              Start New Chat
+            </Button>
           </div>
         ) : (
           <div className="flex flex-col">
@@ -419,6 +454,12 @@ export function ConversationList({
           </div>
         )}
       </ScrollArea>
+
+      <NewChatDialog
+        open={newChatOpen}
+        onOpenChange={setNewChatOpen}
+        onConversationCreated={handleConversationCreated}
+      />
     </div>
   );
 }
@@ -437,8 +478,15 @@ function ConversationItem({
   t,
 }: ConversationItemProps) {
   const contact = conversation.contact;
-  const displayName = contact?.name || contact?.phone || t("unknown");
-  const initials = displayName.charAt(0).toUpperCase();
+  const rawPhone = contact?.phone || "";
+  const country = getCountryFromPhone(rawPhone);
+  const formattedPhone = formatPhoneDisplay(rawPhone);
+
+  const hasName = Boolean(contact?.name && contact.name.trim());
+  const displayName = hasName
+    ? contact!.name!.trim()
+    : formattedPhone || (contact?.wa_username ? `@${contact.wa_username}` : t("unknown"));
+  const initials = (contact?.name?.trim() || formattedPhone || t("unknown")).charAt(0).toUpperCase();
 
   const handleClick = useCallback(() => {
     onSelect(conversation);
@@ -458,8 +506,8 @@ function ConversationItem({
         isActive && "border-l-2 border-primary bg-muted/70"
       )}
     >
-      {/* Avatar */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
+      {/* Avatar with country flag badge */}
+      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
         {contact?.avatar_url ? (
           <img
             src={contact.avatar_url}
@@ -469,14 +517,33 @@ function ConversationItem({
         ) : (
           initials
         )}
+        {country && (
+          <span
+            className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-card border border-border text-[10px] shadow-sm select-none"
+            title={`${country.name} (+${country.dialCode})`}
+          >
+            {country.flag}
+          </span>
+        )}
       </div>
 
       {/* Content */}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-medium text-foreground">
-            {displayName}
-          </span>
+        <div className="flex items-center justify-between gap-1.5">
+          <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+            <span className="truncate text-sm font-medium text-foreground">
+              {displayName}
+            </span>
+            {hasName && formattedPhone && (
+              <span
+                className="inline-flex shrink-0 items-center gap-1 rounded bg-muted/80 px-1 py-0.5 text-[10px] font-mono text-muted-foreground"
+                title={`${formattedPhone} (${country?.name || 'International'})`}
+              >
+                {country?.flag && <span className="text-[11px] leading-none">{country.flag}</span>}
+                <span className="truncate max-w-[125px]">{formattedPhone}</span>
+              </span>
+            )}
+          </div>
           <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">

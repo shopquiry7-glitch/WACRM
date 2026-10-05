@@ -51,6 +51,7 @@ export async function middleware(request: NextRequest) {
   if (user && (
     request.nextUrl.pathname === '/login' ||
     request.nextUrl.pathname === '/signup' ||
+    request.nextUrl.pathname === '/register' ||
     request.nextUrl.pathname === '/forgot-password'
   )) {
     const url = request.nextUrl.clone()
@@ -58,7 +59,8 @@ export async function middleware(request: NextRequest) {
     if (
       inviteToken &&
       (request.nextUrl.pathname === '/login' ||
-        request.nextUrl.pathname === '/signup')
+        request.nextUrl.pathname === '/signup' ||
+        request.nextUrl.pathname === '/register')
     ) {
       url.pathname = `/join/${encodeURIComponent(inviteToken)}`
       url.search = ''

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { Message } from "@/types";
 import {
@@ -12,13 +13,18 @@ import {
   getNotificationPermission,
   pickContactDisplayName,
   readBrowserNotifyPref,
-  shouldNotifyForMessage,
   subscribeBrowserNotifyPref,
   viewedConversationFromLocation,
+  DEDUPE_WINDOW_MS,
   type NotificationLabels,
 } from "@/lib/notifications/browser-notify";
+import {
+  initAudioUnlock,
+  playLoudNotificationSound,
+  startTitleFlash,
+} from "@/lib/notifications/sound";
 
-const serverSnapshot = () => false;
+const serverSnapshot = () => true;
 
 /**
  * The device-scoped "browser notifications" opt-in, kept in sync with
@@ -33,29 +39,21 @@ export function useBrowserNotifyPref(): boolean {
 }
 
 /**
- * Desktop notifications for new inbound customer messages. Mount ONCE
- * per signed-in dashboard tab (the dashboard shell does this via
- * <BrowserNotificationsListener />) so alerts fire on any page.
+ * Global Loud Audio & Desktop Notifications for new inbound customer messages.
+ * Mounts ONCE in dashboard-shell so alerts fire on every page (Inbox, Contacts, Dashboard, etc.).
  *
- * Listens for realtime INSERTs on `messages` — RLS scopes the stream to
- * the caller's account, same as useTotalUnread / useRealtime. Only
- * live events are considered: there is no initial fetch, so an existing
- * backlog never produces a burst of alerts on page load.
- *
- * Own channel name so it coexists with the inbox page's subscription
- * and the sidebar's unread counters.
- *
- * Fires only while a dashboard tab is open — there is no service worker
- * or Web Push here, so a closed browser stays quiet.
+ * Features:
+ * - High-volume, loud WhatsApp incoming chime via Web Audio API.
+ * - Native PC / Desktop Notification (with requireInteraction: true so it stays visible on Windows/Mac).
+ * - Flashing browser tab title ("🔔 New WhatsApp Message!") when user is in another tab or app.
+ * - On-screen rich interactive toast with 1-click "Open Chat" button.
  */
 export function useBrowserNotifications(): void {
   const enabled = useBrowserNotifyPref();
   const router = useRouter();
   const t = useTranslations("Settings.browserNotifications.labels");
 
-  // Translated labels, read inside the async Realtime callback. Kept in
-  // a ref (assigned in an effect, not during render) so a locale change
-  // doesn't tear down and re-open the channel.
+  // Translated labels, read inside the async Realtime callback
   const labelsRef = useRef<NotificationLabels>(DEFAULT_NOTIFICATION_LABELS);
   useEffect(() => {
     labelsRef.current = {
@@ -69,53 +67,99 @@ export function useBrowserNotifications(): void {
     };
   });
 
-  // Message ids already handled, for replay dedupe. Survives re-renders,
-  // pruned by shouldNotifyForMessage.
+  // Message ids already handled, for replay dedupe
   const seenRef = useRef<Map<string, number>>(new Map());
+
+  // Initialize audio context unlocking on user's first click/touch
+  useEffect(() => {
+    initAudioUnlock();
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
-    if (getNotificationPermission() === "unsupported") return;
 
     const supabase = createClient();
     let cancelled = false;
 
-    const notify = async (msg: Message) => {
-      // One small select to put the contact's name in the title. A
-      // failure here just means the generic fallback title.
+    const handleInboundMessage = async (msg: Message) => {
+      // 1. Play LOUD audio notification chime immediately
+      try {
+        playLoudNotificationSound();
+      } catch (err) {
+        console.warn("[useBrowserNotifications] sound error:", err);
+      }
+
+      // 2. Fetch contact info for notification text
       const { data } = await supabase
         .from("conversations")
         .select("contact:contacts(name, wa_username, phone)")
         .eq("id", msg.conversation_id)
         .maybeSingle();
+
       if (cancelled) return;
 
       const contact = (data as {
         contact?: { name?: string | null; wa_username?: string | null; phone?: string | null } | null;
       } | null)?.contact;
+
+      const displayName = pickContactDisplayName(contact);
       const { title, body } = buildNotificationContent(
         msg,
-        pickContactDisplayName(contact),
+        displayName,
         labelsRef.current,
       );
 
-      try {
-        const notification = new Notification(title, {
-          body,
-          // One alert per conversation: a second message from the same
-          // customer replaces the first instead of stacking.
-          tag: msg.conversation_id,
-          icon: "/icon",
+      const isDocumentActive =
+        typeof document !== "undefined" &&
+        document.visibilityState === "visible" &&
+        document.hasFocus();
+
+      const viewingConv = viewedConversationFromLocation(
+        window.location.pathname,
+        window.location.search,
+      );
+
+      const isViewingThisConversation =
+        isDocumentActive && viewingConv === msg.conversation_id;
+
+      // If user is NOT actively focused on this exact conversation:
+      if (!isViewingThisConversation) {
+        // A. Flash the browser tab title
+        startTitleFlash(displayName || undefined);
+
+        // B. Show On-Screen Rich Toast
+        toast(`💬 ${title}`, {
+          description: body,
+          duration: 8000,
+          action: {
+            label: "Open Chat",
+            onClick: () => {
+              window.focus();
+              router.push(conversationHref(msg.conversation_id));
+            },
+          },
         });
-        notification.onclick = () => {
-          window.focus();
-          router.push(conversationHref(msg.conversation_id));
-          notification.close();
-        };
-      } catch (err) {
-        // Some browsers throw from the constructor (e.g. Android Chrome
-        // requires a service worker). Non-fatal.
-        console.error("[useBrowserNotifications] failed to show:", err);
+
+        // C. Show Native PC Desktop Notification
+        if (getNotificationPermission() === "granted") {
+          try {
+            const notification = new Notification(title, {
+              body,
+              tag: msg.conversation_id,
+              icon: "/icon",
+              // requireInteraction ensures notification stays on PC screen until user clicks/dismisses
+              requireInteraction: true,
+            });
+
+            notification.onclick = () => {
+              window.focus();
+              router.push(conversationHref(msg.conversation_id));
+              notification.close();
+            };
+          } catch (err) {
+            console.error("[useBrowserNotifications] desktop notify error:", err);
+          }
+        }
       }
     };
 
@@ -125,20 +169,18 @@ export function useBrowserNotifications(): void {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
-          // Re-check every time: the user can revoke permission in the
-          // browser without the preference flipping.
-          if (getNotificationPermission() !== "granted") return;
           const msg = payload.new as Message;
-          const shouldNotify = shouldNotifyForMessage(msg, {
-            documentVisible: document.visibilityState === "visible",
-            viewingConversationId: viewedConversationFromLocation(
-              window.location.pathname,
-              window.location.search,
-            ),
-            seen: seenRef.current,
-          });
-          if (!shouldNotify) return;
-          void notify(msg);
+          if (!msg || msg.sender_type !== "customer") return;
+
+          // Deduplicate within window
+          const now = Date.now();
+          for (const [id, at] of seenRef.current) {
+            if (now - at > DEDUPE_WINDOW_MS) seenRef.current.delete(id);
+          }
+          if (seenRef.current.has(msg.id)) return;
+          seenRef.current.set(msg.id, now);
+
+          void handleInboundMessage(msg);
         },
       )
       .subscribe();

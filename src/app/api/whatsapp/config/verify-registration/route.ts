@@ -101,11 +101,18 @@ export async function GET() {
 
   // 1. Phone metadata
   try {
-    await verifyPhoneNumber({
+    const phoneInfo = await verifyPhoneNumber({
       phoneNumberId: config.phone_number_id,
       accessToken,
     })
     checks.phone_metadata_ok = true
+    if (phoneInfo.verified_name === 'Test Number' && !config.registered_at) {
+      await supabase
+        .from('whatsapp_config')
+        .update({ registered_at: new Date().toISOString() })
+        .eq('id', config.id)
+      checks.locally_marked_registered = true
+    }
   } catch (err) {
     errors.push(
       `Phone metadata check failed: ${err instanceof Error ? err.message : String(err)}`,

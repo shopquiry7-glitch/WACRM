@@ -27,6 +27,8 @@ import {
   RefreshCw,
   PanelRightOpen,
   PanelRightClose,
+  Trash2,
+  X,
 } from "lucide-react";
 import { format, isToday, isYesterday, differenceInHours } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -54,7 +56,9 @@ import { AiThreadBanner } from "./ai-thread-banner";
 import { buildReplyPreview } from "./reply-quote";
 import { renderTemplateBody } from "@/lib/whatsapp/template-body";
 import { contactHandle } from "@/lib/whatsapp/wa-identity";
+import { getCountryFromPhone, formatPhoneDisplay } from "@/lib/whatsapp/phone-country";
 import { toast } from "sonner";
+import { DeleteMessageDialog } from "./delete-message-dialog";
 
 interface ReplyDraft {
   id: string;
@@ -166,8 +170,8 @@ export function MessageThread({
   onToggleContactPanel,
 }: MessageThreadProps) {
   const t = useTranslations("Inbox.messageThread");
-  const tTimer = useTranslations("Inbox.sessionTimer");
   const tQuote = useTranslations("Inbox.replyQuote");
+  const tActions = useTranslations("Inbox.actions");
 
   const { user } = useAuth();
   const { getPresence, getRow, now } = usePresence();
@@ -199,6 +203,12 @@ export function MessageThread({
     }, 700);
   }, [isRefreshing, onRefresh]);
   const [replyTo, setReplyTo] = useState<ReplyDraft | null>(null);
+  const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
+  const [multiDeleteDialogOpen, setMultiDeleteDialogOpen] = useState(false);
+
+  useEffect(() => {
+    setSelectedMessageIds(new Set());
+  }, [conversation?.id]);
   // Which attachment the media viewer is showing. Lives here rather than in
   // the bubble so the viewer can page through every image/video in the
   // thread (issue #373). Paired with the conversation it belongs to and read
@@ -231,33 +241,6 @@ export function MessageThread({
       cancelled = true;
     };
   }, []);
-
-  // 24-hour session timer
-  const sessionInfo = useMemo(() => {
-    if (!messages.length) return { expired: false, remaining: "" };
-
-    // Find last customer message
-    const lastCustomerMsg = [...messages]
-      .reverse()
-      .find((m) => m.sender_type === "customer");
-
-    if (!lastCustomerMsg) return { expired: true, remaining: tTimer("noCustomerMessages") };
-
-    const hoursSince = differenceInHours(new Date(), new Date(lastCustomerMsg.created_at));
-    const expired = hoursSince >= 24;
-
-    if (expired) {
-      return { expired: true, remaining: tTimer("expired") };
-    }
-
-    const hoursLeft = 24 - hoursSince;
-    const remaining =
-      hoursLeft >= 1
-        ? tTimer("xhRemaining", { hours: Math.floor(hoursLeft) })
-        : tTimer("xmRemaining", { minutes: Math.floor(hoursLeft * 60) });
-
-    return { expired, remaining };
-  }, [messages, tTimer]);
 
   // Store latest callback in a ref so fetchMessages doesn't need to
   // depend on `onMessagesLoaded` — otherwise parent re-renders cause
@@ -311,7 +294,13 @@ export function MessageThread({
       if (error) {
         console.error("Failed to fetch messages:", error);
       } else {
-        onMessagesLoadedRef.current(data ?? []);
+        let hidden: string[] = [];
+        try {
+          hidden = JSON.parse(localStorage.getItem("wacrm_hidden_messages") || "[]");
+        } catch {}
+        const rows = (data as Message[]) ?? [];
+        const visible = hidden.length > 0 ? rows.filter((m) => !hidden.includes(m.id)) : rows;
+        onMessagesLoadedRef.current(visible);
       }
 
       if (!cancelled) setLoading(false);
@@ -729,6 +718,118 @@ export function MessageThread({
     [conversation, onNewMessage, onUpdateMessage, t],
   );
 
+  const handleDeleteMessage = useCallback(
+    async (messageId: string, scope: "me" | "everyone") => {
+      if (scope === "me") {
+        try {
+          const stored: string[] = JSON.parse(
+            localStorage.getItem("wacrm_hidden_messages") || "[]",
+          );
+          if (!stored.includes(messageId)) {
+            stored.push(messageId);
+            localStorage.setItem("wacrm_hidden_messages", JSON.stringify(stored));
+          }
+        } catch {}
+        onMessagesLoaded(messages.filter((m) => m.id !== messageId));
+        toast.success(tActions("deletedForMe") ?? "Message deleted for you");
+      } else {
+        const target = messages.find((m) => m.id === messageId);
+        onMessagesLoaded(messages.filter((m) => m.id !== messageId));
+
+        const supabase = createClient();
+        const { error } = await supabase.from("messages").delete().eq("id", messageId);
+        if (error) {
+          console.error("Failed to delete message:", error);
+          toast.error("Failed to delete message: " + error.message);
+          if (target) onMessagesLoaded(messages);
+          return;
+        }
+
+        if (target?.media_url) {
+          try {
+            const urlObj = new URL(target.media_url);
+            const pathParts = urlObj.pathname.split("/public/chat-media/");
+            if (pathParts[1]) {
+              void deleteAccountMedia(CHAT_MEDIA_BUCKET, decodeURIComponent(pathParts[1])).catch(() => {});
+            }
+          } catch {}
+        }
+
+        toast.success(tActions("deletedForEveryone") ?? "Message deleted for everyone");
+      }
+    },
+    [messages, onMessagesLoaded, tActions],
+  );
+
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedMessageIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleMultiDelete = useCallback(
+    async (scope: "me" | "everyone") => {
+      const ids = Array.from(selectedMessageIds);
+      if (ids.length === 0) return;
+
+      if (scope === "me") {
+        try {
+          const stored: string[] = JSON.parse(
+            localStorage.getItem("wacrm_hidden_messages") || "[]",
+          );
+          const updated = Array.from(new Set([...stored, ...ids]));
+          localStorage.setItem("wacrm_hidden_messages", JSON.stringify(updated));
+        } catch {}
+
+        onMessagesLoaded(messages.filter((m) => !selectedMessageIds.has(m.id)));
+        toast.success(
+          ids.length > 1
+            ? `${ids.length} messages deleted for you`
+            : "Message deleted for you",
+        );
+      } else {
+        const targetList = messages.filter((m) => selectedMessageIds.has(m.id));
+        onMessagesLoaded(messages.filter((m) => !selectedMessageIds.has(m.id)));
+
+        const supabase = createClient();
+        const { error } = await supabase.from("messages").delete().in("id", ids);
+        if (error) {
+          console.error("Failed to delete messages:", error);
+          toast.error("Failed to delete messages: " + error.message);
+          onMessagesLoaded(messages);
+          return;
+        }
+
+        for (const target of targetList) {
+          if (target.media_url) {
+            try {
+              const urlObj = new URL(target.media_url);
+              const pathParts = urlObj.pathname.split("/public/chat-media/");
+              if (pathParts[1]) {
+                void deleteAccountMedia(CHAT_MEDIA_BUCKET, decodeURIComponent(pathParts[1])).catch(() => {});
+              }
+            } catch {}
+          }
+        }
+
+        toast.success(
+          ids.length > 1
+            ? `${ids.length} messages deleted for everyone`
+            : "Message deleted for everyone",
+        );
+      }
+
+      setSelectedMessageIds(new Set());
+    },
+    [messages, onMessagesLoaded, selectedMessageIds],
+  );
+
   // Build a quick id → Message map so reply quotes can be rendered without
   // an extra fetch — the thread already holds the full conversation.
   const messagesById = useMemo(() => {
@@ -751,6 +852,7 @@ export function MessageThread({
     }
     return map;
   }, [reactions]);
+
 
   const contactDisplayName =
     contact?.name || (contact ? contactHandle(contact) : "") || t("customer");
@@ -881,7 +983,10 @@ export function MessageThread({
     );
   }
 
-  const displayName = contact.name || contactHandle(contact);
+  const rawPhone = contact.phone || "";
+  const country = getCountryFromPhone(rawPhone);
+  const formattedPhone = formatPhoneDisplay(rawPhone);
+  const displayName = contact.name || formattedPhone || contactHandle(contact);
   const messageGroups = groupMessagesByDate(messages);
   const currentStatus = STATUS_OPTIONS.find(
     (s) => s.value === conversation.status
@@ -918,27 +1023,31 @@ export function MessageThread({
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
+          <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
             {displayName.charAt(0).toUpperCase()}
+            {country && (
+              <span
+                className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-card border border-border text-[10px] shadow-sm select-none"
+                title={`${country.name} (+${country.dialCode})`}
+              >
+                {country.flag}
+              </span>
+            )}
           </div>
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold text-foreground">{displayName}</h2>
-            <p className="truncate text-xs text-muted-foreground">
-              {contactHandle(contact)}
-            </p>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              {contact.phone ? (
+                <>
+                  {country && <span className="text-[11px]">{country.flag}</span>}
+                  <span className="font-mono">{formattedPhone}</span>
+                  {country && <span className="text-[11px] text-muted-foreground/80">• {country.name}</span>}
+                </>
+              ) : (
+                <span className="truncate">{contactHandle(contact)}</span>
+              )}
+            </div>
           </div>
-          {/* Session timer badge — hidden on the narrowest phones so
-              the name + back arrow keep their room. */}
-          <Badge
-            variant="outline"
-            className={cn(
-              "ml-1 hidden gap-1 border-border text-[10px] sm:inline-flex sm:ml-2",
-              sessionInfo.expired ? "text-red-400" : "text-primary"
-            )}
-          >
-            <Clock className="h-3 w-3" />
-            {sessionInfo.remaining}
-          </Badge>
         </div>
 
         <div className="flex items-center gap-2">
@@ -1141,6 +1250,10 @@ export function MessageThread({
                         onReact={(emoji) => {
                           if (emoji) void postReaction(msg.id, emoji);
                         }}
+                        onDelete={handleDeleteMessage}
+                        onSelect={handleToggleSelect}
+                        isSelected={selectedMessageIds.has(msg.id)}
+                        isSelectionMode={selectedMessageIds.size > 0}
                       >
                         <MessageBubble
                           message={msg}
@@ -1149,6 +1262,7 @@ export function MessageThread({
                           currentUserId={user?.id}
                           onToggleReaction={handlePillToggle}
                           onOpenMedia={handleMediaChange}
+                          onOpenTemplates={handleOpenTemplates}
                         />
                       </MessageActions>
                     );
@@ -1176,16 +1290,55 @@ export function MessageThread({
         }}
       />
 
-      {/* Composer */}
-      <MessageComposer
-        conversationId={conversation.id}
-        sessionExpired={sessionInfo.expired}
-        onSend={handleSend}
-        onSendMedia={handleSendMedia}
-        onSendInteractive={handleSendInteractive}
-        onOpenTemplates={handleOpenTemplates}
-        replyTo={replyTo}
-        onClearReply={() => setReplyTo(null)}
+
+      {/* Composer or WhatsApp-style selection bar */}
+      {selectedMessageIds.size > 0 ? (
+        <div className="h-[62px] bg-[#202c33] border-t border-[#2a3942] px-6 flex items-center justify-between z-20 transition-all animate-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setSelectedMessageIds(new Set())}
+              className="p-1.5 rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer"
+              title="Close"
+              aria-label="Close selection"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <span className="text-sm font-medium text-[#e9edef]">
+              {selectedMessageIds.size} selected
+            </span>
+          </div>
+          <div className="flex items-center">
+            <button
+              type="button"
+              onClick={() => setMultiDeleteDialogOpen(true)}
+              className="p-2 rounded-full text-[#8696a0] hover:text-[#f15c6d] transition-colors cursor-pointer"
+              title="Delete"
+              aria-label="Delete selected messages"
+            >
+              <Trash2 className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <MessageComposer
+          conversationId={conversation.id}
+          onSend={handleSend}
+          onSendMedia={handleSendMedia}
+          onSendInteractive={handleSendInteractive}
+          onOpenTemplates={handleOpenTemplates}
+          replyTo={replyTo}
+          onClearReply={() => setReplyTo(null)}
+        />
+      )}
+
+      {/* Multi-message delete dialog */}
+      <DeleteMessageDialog
+        open={multiDeleteDialogOpen}
+        onOpenChange={setMultiDeleteDialogOpen}
+        onDeleteForEveryone={() => handleMultiDelete("everyone")}
+        onDeleteForMe={() => handleMultiDelete("me")}
+        count={selectedMessageIds.size}
       />
 
       <TemplatePicker

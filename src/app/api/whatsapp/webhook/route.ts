@@ -434,6 +434,140 @@ async function handleStatusUpdate(status: {
     )
   }
 
+  // Auto-heal 24-hour window rejections (#131047):
+  // If Meta rejected an outbound message because >24h elapsed without customer reply,
+  // automatically re-deliver it using the approved template "direct_chat_update".
+  const is24h =
+    failure?.code === 131047 ||
+    Boolean(
+      failure?.title?.includes('24 hours') ||
+      failure?.title?.includes('Re-engagement') ||
+      failure?.details?.includes('24 hours')
+    );
+
+  if (is24h) {
+    try {
+      const { data: failedMsg } = await supabaseAdmin()
+        .from('messages')
+        .select('id, conversation_id, content_text, template_name')
+        .eq('message_id', status.id)
+        .maybeSingle();
+
+      if (failedMsg && failedMsg.template_name !== 'direct_chat_update') {
+        const { data: conv } = await supabaseAdmin()
+          .from('conversations')
+          .select('account_id, contact:contacts(phone, wa_user_id)')
+          .eq('id', failedMsg.conversation_id)
+          .maybeSingle();
+
+        if (conv?.account_id) {
+          const { data: cfg } = await supabaseAdmin()
+            .from('whatsapp_config')
+            .select('*')
+            .eq('account_id', conv.account_id)
+            .maybeSingle();
+
+          if (cfg) {
+            const token = decrypt(cfg.access_token);
+            const contactPhone =
+              (conv.contact as { phone?: string } | null)?.phone ||
+              status.recipient_id;
+            const textToSend = (failedMsg.content_text || 'Update from our team').slice(0, 1024);
+
+            if (contactPhone) {
+              const { data: tpls } = (await supabaseAdmin()
+                .from('message_templates')
+                .select('*')
+                .eq('account_id', conv.account_id)
+                .eq('status', 'APPROVED')) as {
+                data: Array<{
+                  name: string;
+                  language?: string;
+                  body_text?: string;
+                  header_type?: string;
+                  category?: string;
+                }> | null;
+              };
+
+              const fallback =
+                tpls?.find(
+                  (t) =>
+                    t.body_text?.includes('{{1}}') &&
+                    (!t.header_type || t.header_type === 'text') &&
+                    t.category?.toUpperCase() === 'UTILITY'
+                ) ||
+                tpls?.find(
+                  (t) =>
+                    t.body_text?.includes('{{1}}') &&
+                    (!t.header_type || t.header_type === 'text')
+                ) ||
+                tpls?.find((t) => t.name === 'direct_chat_update');
+
+              const templateName = fallback?.name || 'direct_chat_update';
+              const templateLang = fallback?.language || 'en_US';
+              const varCount = (fallback?.body_text?.match(/\{\{\d+\}\}/g) || []).length;
+              const params = [{ type: 'text', text: textToSend }];
+              while (params.length < varCount) {
+                params.push({ type: 'text', text: '•' });
+              }
+
+              const res = await fetch(
+                `https://graph.facebook.com/v21.0/${cfg.phone_number_id}/messages`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({
+                    messaging_product: 'whatsapp',
+                    recipient_type: 'individual',
+                    to: contactPhone,
+                    type: 'template',
+                    template: {
+                      name: templateName,
+                      language: { code: templateLang },
+                      components: [
+                        {
+                          type: 'body',
+                          parameters: params,
+                        },
+                      ],
+                    },
+                  }),
+                }
+              );
+
+              if (res.ok) {
+                const resData = (await res.json()) as { messages?: Array<{ id: string }> };
+                const newWaId = resData.messages?.[0]?.id;
+                if (newWaId) {
+                  await supabaseAdmin()
+                    .from('messages')
+                    .update({
+                      message_id: newWaId,
+                      status: 'sent',
+                      template_name: templateName,
+                      error_code: null,
+                      error_title: null,
+                      error_details: null,
+                    })
+                    .eq('id', failedMsg.id);
+                  console.log(
+                    `[webhook] Auto-healed 24h failed message ${status.id} -> ${newWaId} using ${templateName}`
+                  );
+                  return;
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (autoHealErr) {
+      console.warn('[webhook] 24h auto-heal attempt failed:', autoHealErr);
+    }
+  }
+
   // 1) Mirror onto messages (legacy behavior) — Meta's status values
   //    already match the CHECK constraint on messages.status. No
   //    `.select()`: message_id is NOT unique (migration 009 — Meta ids

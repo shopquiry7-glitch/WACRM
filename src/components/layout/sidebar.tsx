@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useTotalUnread } from "@/hooks/use-total-unread";
@@ -12,12 +12,17 @@ import {
   Bot,
   Crown,
   GitBranch,
+  Globe,
   LayoutDashboard,
   LogOut,
+  MapPin,
   MessageSquare,
   Radio,
+  ReceiptText,
   Settings,
   Shield,
+  ShoppingBag,
+  Sparkles,
   User,
   UserCog,
   Users,
@@ -46,16 +51,16 @@ const ROLE_CHIP: Record<
   admin: {
     icon: Shield,
     labelKey: "roleAdmin",
-    // Primary-tinted: significant but not as scarce as owner.
+    // Cyan/blue: developer & admin technical access.
     className:
-      "border-primary/40 bg-primary/10 text-primary",
+      "border-sky-500/40 bg-sky-500/10 text-sky-400",
   },
   agent: {
     icon: UserCog,
     labelKey: "roleAgent",
-    // Neutral slate: the operational default.
+    // Emerald: sales team & operations.
     className:
-      "border-border bg-muted text-foreground",
+      "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
   },
   viewer: {
     icon: User,
@@ -87,16 +92,34 @@ interface NavItem {
    * Purely informational — doesn't affect routing or access.
    */
   beta?: boolean;
+  sectionTitle?: string;
+  /** Allowed roles. If omitted, visible to all roles. */
+  roles?: AccountRole[];
 }
 
 const navItems: NavItem[] = [
   { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
+  { href: "/feature-store", labelKey: "featureStore", icon: ShoppingBag },
   { href: "/inbox", labelKey: "inbox", icon: MessageSquare },
   { href: "/notifications", labelKey: "notifications", icon: Bell },
   { href: "/contacts", labelKey: "contacts", icon: Users },
+  { href: "/lead-extractor", labelKey: "leadExtractor", icon: MapPin },
   { href: "/pipelines", labelKey: "pipelines", icon: GitBranch },
   { href: "/broadcasts", labelKey: "broadcasts", icon: Radio },
   { href: "/automations", labelKey: "automations", icon: Zap },
+  {
+    href: "/invoices",
+    labelKey: "invoices",
+    icon: ReceiptText,
+    sectionTitle: "Invoices & Quotations",
+  },
+  {
+    href: "/domain-automation",
+    labelKey: "domainAutomation",
+    icon: Globe,
+    sectionTitle: "Domain Automations",
+    roles: ["owner", "admin"],
+  },
   { href: "/flows", labelKey: "flows", icon: Workflow, beta: true },
   { href: "/agents", labelKey: "aiAgents", icon: Bot },
 ];
@@ -206,9 +229,14 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </div>
 
         {/* Main navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <ul className="flex flex-col gap-1">
-            {navItems.map((item) => {
+        <nav className="flex-1 overflow-y-auto px-2.5 py-3 [scrollbar-width:thin] [scrollbar-color:hsl(var(--border))_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+          <ul className="flex flex-col gap-0.5">
+            {navItems
+              .filter(
+                (item) =>
+                  !item.roles || (accountRole && item.roles.includes(accountRole)),
+              )
+              .map((item) => {
               const isActive =
                 pathname === item.href ||
                 (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -224,53 +252,65 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 item.href === "/notifications" && unreadNotifications > 0;
 
               return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      // Taller on mobile so fingers can hit the row reliably (≥44px).
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span className="flex-1">{t(item.labelKey as string)}</span>
-                    {item.beta && (
-                      <span
-                        aria-label={t("beta")}
-                        className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300"
-                      >
-                        {t("beta")}
-                      </span>
-                    )}
-                    {showUnreadDot && (
-                      <span
-                        aria-label={t("unreadConversations", { count: totalUnread })}
-                        className="relative flex h-2 w-2"
-                      >
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                      </span>
-                    )}
-                    {showNotificationBadge && (
-                      <span
-                        aria-label={t("unreadNotifications", { count: unreadNotifications })}
-                        className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
-                      >
-                        {unreadNotifications > 9 ? "9+" : unreadNotifications}
-                      </span>
-                    )}
-                  </Link>
-                </li>
+                <Fragment key={item.href}>
+                  {item.sectionTitle && (
+                    <li className="mt-2.5 mb-0.5 px-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/75">
+                          {item.sectionTitle}
+                        </span>
+                        <div className="flex-1 border-t border-border/60" />
+                      </div>
+                    </li>
+                  )}
+                  <li>
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        // Comfortable hit target on mobile, compact on desktop (32px row)
+                        "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors lg:py-1.5",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="flex-1">{t(item.labelKey as string)}</span>
+                      {item.beta && (
+                        <span
+                          aria-label={t("beta")}
+                          className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300"
+                        >
+                          {t("beta")}
+                        </span>
+                      )}
+                      {showUnreadDot && (
+                        <span
+                          aria-label={t("unreadConversations", { count: totalUnread })}
+                          className="relative flex h-2 w-2 shrink-0"
+                        >
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                        </span>
+                      )}
+                      {showNotificationBadge && (
+                        <span
+                          aria-label={t("unreadNotifications", { count: unreadNotifications })}
+                          className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
+                        >
+                          {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                </Fragment>
               );
             })}
           </ul>
 
-          <div className="my-4 border-t border-border" />
+          <div className="my-2.5 border-t border-border/70" />
 
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col gap-0.5">
             {bottomNavItems.map((item) => {
               const isActive = pathname.startsWith(item.href);
               return (
@@ -278,13 +318,13 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
+                      "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors lg:py-1.5",
                       isActive
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
-                    <item.icon className="h-4 w-4" />
+                    <item.icon className="h-4 w-4 shrink-0" />
                     {t(item.labelKey as string)}
                   </Link>
                 </li>
@@ -292,6 +332,22 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             })}
           </ul>
         </nav>
+
+        {/* Sales Agent Portal Banner */}
+        <div className="px-3 pb-2">
+          <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-2.5 text-xs transition-all hover:border-purple-500/40">
+            <div className="flex items-center gap-2 font-medium text-foreground">
+              <span className="flex size-5 items-center justify-center rounded-full bg-purple-500/20 text-purple-500">
+                <Sparkles className="size-3" />
+              </span>
+              Sales Agent Portal
+            </div>
+            <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>Earn 50% commission</span>
+              <span className="font-semibold text-purple-500">→</span>
+            </div>
+          </div>
+        </div>
 
         {/* User section */}
         <div className="shrink-0 border-t border-border p-3">
@@ -346,9 +402,25 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">
-                  {profile?.full_name ?? t("defaultUser")}
-                </p>
+                <div className="flex items-center justify-between gap-1">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {profile?.full_name ?? t("defaultUser")}
+                  </p>
+                  {accountRole && (
+                    <span
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider",
+                        ROLE_CHIP[accountRole]?.className,
+                      )}
+                    >
+                      {accountRole === "admin"
+                        ? "Developer"
+                        : accountRole === "agent"
+                        ? "Sales"
+                        : t(ROLE_CHIP[accountRole]?.labelKey ?? "roleAgent")}
+                    </span>
+                  )}
+                </div>
                 <p className="truncate text-xs text-muted-foreground">
                   {profile?.email ?? ""}
                 </p>

@@ -215,6 +215,14 @@ function InboxPageInner() {
   // Handle realtime message events
   const handleMessageEvent = useCallback(
     (event: { eventType: string; new: Message; old: Partial<Message> }) => {
+      if (event.eventType === "DELETE") {
+        const deletedId = event.old?.id;
+        if (deletedId) {
+          setMessages((prev) => prev.filter((m) => m.id !== deletedId));
+        }
+        return;
+      }
+
       const newMsg = event.new;
 
       if (event.eventType === "INSERT") {
@@ -632,7 +640,10 @@ function InboxPageInner() {
             toggle — which is itself desktop-only — never affects it. */}
         {contactPanelOpen && (
           <div className="hidden lg:block">
-            <ContactSidebar contact={activeContact} />
+            <ContactSidebar
+              contact={activeContact}
+              conversation={activeConversation}
+            />
           </div>
         )}
       </div>

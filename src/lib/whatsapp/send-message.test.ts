@@ -224,6 +224,8 @@ function sendPathDb(
       const builder: Record<string, unknown> = {
         select: () => builder,
         eq: () => builder,
+        order: () => builder,
+        limit: () => builder,
         insert: (row: Record<string, unknown>) => {
           if (table === 'messages') captured.message = row;
           return builder;
@@ -443,5 +445,39 @@ describe('sendMessageToConversation — BSUID recipients (#519)', () => {
         { conversationId: 'cv-1', messageType: 'text', contentText: 'hi' }
       )
     ).rejects.toThrow(/no phone number or WhatsApp user ID/);
+  });
+
+  it('automatically falls back to approved template when 24-hour window is closed (131047)', async () => {
+    const captured: CapturedWrites = {};
+    const { sendTextMessage } = await import('@/lib/whatsapp/meta-api');
+    vi.mocked(sendTextMessage).mockRejectedValueOnce(
+      new Error('(#131047) Re-engagement message: 24-hour customer window is closed')
+    );
+    sendTemplateMessage.mockClear();
+
+    const approvedFallback = {
+      id: 'tpl-fb',
+      name: 'direct_chat_update',
+      status: 'APPROVED',
+      body_text: 'Update from our team: {{1}}\n\nReply to continue.',
+      language: 'en_US',
+      header_type: null,
+      account_id: 'acct-1',
+    };
+
+    await sendMessageToConversation(
+      sendPathDb([approvedFallback], captured),
+      'acct-1',
+      { conversationId: 'cv-1', messageType: 'text', contentText: 'Hello after 24h!' }
+    );
+
+    expect(sendTemplateMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        templateName: 'direct_chat_update',
+        params: ['Hello after 24h!'],
+      })
+    );
+    expect(captured.message?.content_text).toBe('Hello after 24h!');
+    expect(captured.message?.status).toBe('sent');
   });
 });

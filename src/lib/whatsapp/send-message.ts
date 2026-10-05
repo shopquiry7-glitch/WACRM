@@ -190,17 +190,15 @@ export async function sendMessageToConversation(
 ): Promise<SendMessageResult> {
   const {
     conversationId,
-    messageType,
     contentText,
     mediaUrl,
     filename,
-    templateName,
     templateLanguage,
-    templateParams,
     templateMessageParams,
     interactivePayload,
     replyToMessageId,
   } = params;
+  let { messageType, templateName, templateParams } = params;
 
   if (!conversationId) {
     throw new SendMessageError(
@@ -218,6 +216,7 @@ export async function sendMessageToConversation(
     interactivePayload,
   });
 
+  const requestedContentType = messageType;
   const isMediaKind = (MEDIA_KINDS as readonly string[]).includes(messageType);
 
   // Conversation + contact, account-scoped.
@@ -339,6 +338,107 @@ export async function sendMessageToConversation(
     sendLanguage = resolved.language;
   }
 
+  // Proactively check if WhatsApp 24-hour service window is closed.
+  // When closed, sending a regular text message causes Meta's async
+  // webhook to reject it with #131047 ("Re-engagement message").
+  // By automatically packaging it into an approved template (direct_chat_update),
+  // Meta delivers it to the customer without any error, 24/7/365.
+  if (messageType === 'text' && contentText) {
+    let isWindowClosed = false;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let query: any = db
+        .from('messages')
+        .select('created_at')
+        .eq('conversation_id', conversationId)
+        .eq('sender_type', 'customer');
+
+      if (typeof query.order === 'function') {
+        query = query.order('created_at', { ascending: false });
+      }
+      if (typeof query.limit === 'function') {
+        query = query.limit(1);
+      }
+      const { data: lastCustomerMsg } =
+        typeof query.maybeSingle === 'function'
+          ? await query.maybeSingle()
+          : { data: null };
+
+      isWindowClosed =
+        !lastCustomerMsg ||
+        Date.now() - new Date(lastCustomerMsg.created_at).getTime() > 24 * 60 * 60 * 1000;
+    } catch {
+      isWindowClosed = false;
+    }
+
+    if (isWindowClosed) {
+      const { data: approvedTemplates } = await db
+        .from('message_templates')
+        .select('*')
+        .eq('status', 'APPROVED');
+
+      const accountApproved = approvedTemplates?.filter(
+        (t) => t.account_id === accountId || !t.account_id
+      );
+      const candidates = (accountApproved && accountApproved.length > 0)
+        ? accountApproved
+        : (approvedTemplates ?? []);
+
+      const fallback =
+        // 1. Prefer UTILITY template with {{1}} in body_text (Meta #131049 marketing limit does not apply to Utility templates)
+        candidates.find((t) => {
+          const hasVar =
+            typeof t.body_text === 'string' && t.body_text.includes('{{1}}');
+          const noMedia = !t.header_type || t.header_type === 'text';
+          const isUtility = t.category?.toUpperCase() === 'UTILITY';
+          return hasVar && noMedia && isUtility;
+        }) ||
+        // 2. Next prefer any template with {{1}} and no media
+        candidates.find((t) => {
+          const hasVar =
+            typeof t.body_text === 'string' && t.body_text.includes('{{1}}');
+          const noMedia = !t.header_type || t.header_type === 'text';
+          return hasVar && noMedia;
+        }) ||
+        candidates.find(
+          (t) =>
+            typeof t.body_text === 'string' && t.body_text.includes('{{1}}')
+        ) ||
+        candidates.find((t) => t.name === 'hello_world') ||
+        candidates[0];
+
+      if (fallback) {
+        templateRow = fallback;
+        templateName = fallback.name;
+        sendLanguage = fallback.language || 'en_US';
+        const varCount = (fallback.body_text?.match(/\{\{\d+\}\}/g) || []).length;
+        const textPayload = (
+          contentText.replace(/[\r\n\t]+/g, ' ').replace(/\s{4,}/g, '   ').trim() ||
+          'Update from our team'
+        ).slice(0, 1024);
+        const bodyParams: string[] = [];
+
+        if (
+          fallback.name === 'website_service_inquiry' ||
+          fallback.name === 'website_inquiry_service'
+        ) {
+          const clientName = contact?.name?.trim() || 'there';
+          bodyParams.push(clientName, 'Our Team', 'Jeose');
+        } else if (varCount > 0) {
+          bodyParams.push(textPayload);
+          while (bodyParams.length < varCount) {
+            bodyParams.push('•');
+          }
+        }
+        templateParams = bodyParams;
+        messageType = 'template';
+        console.log(
+          `[send-message] 24h window closed — proactively sending via approved template "${fallback.name}"`
+        );
+      }
+    }
+  }
+
   const attempt = async (phone: string): Promise<string> => {
     if (messageType === 'template') {
       const result = await sendTemplateMessage({
@@ -439,7 +539,121 @@ export async function sendMessageToConversation(
     const message =
       err instanceof Error ? err.message : 'Unknown Meta API error';
     console.error('[send-message] Meta send failed for all variants:', message);
-    throw new SendMessageError('meta_error', `Meta API error: ${message}`, 502);
+    const is24h =
+      message.includes('131047') ||
+      message.includes('24 hours') ||
+      message.includes('re-engagement') ||
+      message.includes('service window');
+
+    if (is24h) {
+      // Auto-fallback to approved template if 24-hour window has expired
+      try {
+        const { data: approvedTemplates } = await db
+          .from('message_templates')
+          .select('*')
+          .eq('status', 'APPROVED');
+
+        // Look for approved templates that can convey the message text:
+        // 1. Prefer template with {{1}} in body_text and no required media header (e.g. direct_chat_update)
+        // 2. Next prefer any template with {{1}} in body_text
+        // 3. Fall back to hello_world or any approved template
+        const accountApproved = approvedTemplates?.filter(
+          (t) => t.account_id === accountId || !t.account_id
+        );
+        const candidates = (accountApproved && accountApproved.length > 0)
+          ? accountApproved
+          : (approvedTemplates ?? []);
+
+        const fallback =
+          // 1. Prefer UTILITY template with {{1}} in body_text (Meta #131049 marketing limit does not apply to Utility templates)
+          candidates.find((t) => {
+            const hasVar =
+              typeof t.body_text === 'string' && t.body_text.includes('{{1}}');
+            const noMedia = !t.header_type || t.header_type === 'text';
+            const isUtility = t.category?.toUpperCase() === 'UTILITY';
+            return hasVar && noMedia && isUtility;
+          }) ||
+          // 2. Next prefer any template with {{1}} and no media
+          candidates.find((t) => {
+            const hasVar =
+              typeof t.body_text === 'string' && t.body_text.includes('{{1}}');
+            const noMedia = !t.header_type || t.header_type === 'text';
+            return hasVar && noMedia;
+          }) ||
+          candidates.find(
+            (t) =>
+              typeof t.body_text === 'string' && t.body_text.includes('{{1}}')
+          ) ||
+          candidates.find((t) => t.name === 'hello_world') ||
+          candidates[0];
+
+        const rawPayload =
+          contentText ||
+          (mediaUrl ? `Attachment: ${mediaUrl}` : 'Update from our team');
+        const textPayload = (
+          rawPayload.replace(/[\r\n\t]+/g, ' ').replace(/\s{4,}/g, '   ').trim() ||
+          'Update from our team'
+        ).slice(0, 1024);
+
+        if (fallback) {
+          console.log(
+            `[send-message] 24h window closed — auto-fallback to approved template "${fallback.name}"`
+          );
+          const varCount = (fallback.body_text?.match(/\{\{\d+\}\}/g) || []).length;
+          const bodyParams: string[] = [];
+          if (varCount > 0) {
+            bodyParams.push(textPayload);
+            while (bodyParams.length < varCount) {
+              bodyParams.push('•');
+            }
+          }
+
+          const fbRes = await sendTemplateMessage({
+            phoneNumberId: config.phone_number_id,
+            accessToken,
+            to: workingPhone,
+            templateName: fallback.name,
+            language: fallback.language || 'en_US',
+            template: fallback,
+            params: bodyParams.length > 0 ? bodyParams : undefined,
+          });
+          waMessageId = fbRes.messageId;
+          templateRow = fallback;
+        } else {
+          console.log(
+            `[send-message] 24h window closed — fallback to Meta default hello_world template`
+          );
+          const fbRes = await sendTemplateMessage({
+            phoneNumberId: config.phone_number_id,
+            accessToken,
+            to: workingPhone,
+            templateName: 'hello_world',
+            language: 'en_US',
+          });
+          waMessageId = fbRes.messageId;
+        }
+      } catch (fallbackErr) {
+        if (fallbackErr instanceof SendMessageError) throw fallbackErr;
+        const fbMsg =
+          fallbackErr instanceof Error
+            ? fallbackErr.message
+            : String(fallbackErr);
+        console.error('[send-message] 24h fallback failed:', fbMsg);
+        throw new SendMessageError(
+          'meta_error',
+          `Message delivery error: ${fbMsg}`,
+          502
+        );
+      }
+    } else if (isRecipientNotAllowedError(message)) {
+      throw new SendMessageError(
+        'meta_error',
+        `Meta Test Number (#131030): Recipient (+${sanitizedPhone}) is not in your allowed test list. Add it in Meta Developers → WhatsApp → API Setup → "Manage phone number list", or connect a real phone number for unlimited Live messaging.`,
+        502
+      );
+    } else {
+      throw new SendMessageError('meta_error', `Meta API error: ${message}`, 502);
+    }
   }
 
   if (hasValidPhone && workingPhone !== sanitizedPhone) {
@@ -478,8 +692,8 @@ export async function sendMessageToConversation(
     .insert({
       conversation_id: conversationId,
       sender_type: 'agent',
-      content_type: messageType,
-      content_text: persistedText,
+      content_type: requestedContentType,
+      content_text: contentText || persistedText,
       media_url: mediaUrl || null,
       template_name: templateName || null,
       interactive_payload:
