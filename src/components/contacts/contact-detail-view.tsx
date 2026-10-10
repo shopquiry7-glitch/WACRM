@@ -42,6 +42,7 @@ import {
   MessageSquare,
   Send,
   ArrowUpRight,
+  PhoneCall,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { contactHandle } from '@/lib/whatsapp/wa-identity';
@@ -465,6 +466,22 @@ export function ContactDetailView({
                         <Copy className="size-3" />
                       )}
                     </button>
+                    {contact.phone && (
+                      <a
+                        href="/ai-calling"
+                        onClick={() => {
+                          if (typeof window !== 'undefined' && contact.phone) {
+                            localStorage.setItem('dialer_prefill_phone', contact.phone);
+                            localStorage.setItem('dialer_prefill_name', contact.name || '');
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-semibold text-emerald-400 hover:bg-emerald-500 hover:text-white transition cursor-pointer"
+                        title="Call with Live UAE/KSA Phone Dialer"
+                      >
+                        <PhoneCall className="size-3" />
+                        Call Client
+                      </a>
+                    )}
                     {contact.email && (
                       <span className="flex items-center gap-1">
                         <Mail className="size-3" />

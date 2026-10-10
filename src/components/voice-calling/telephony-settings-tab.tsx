@@ -130,7 +130,7 @@ export function TelephonySettingsTab({
               <div className="pt-2 border-t border-border/60 text-xs flex items-center justify-between">
                 <span className="text-[11px] text-muted-foreground">Routing:</span>
                 <span className="font-semibold text-violet-400 truncate max-w-[150px]">
-                  {num.assignedAgentName || "Maya Receptionist"}
+                  {num.assignedAgentName || "Priya Receptionist"}
                 </span>
               </div>
             </div>

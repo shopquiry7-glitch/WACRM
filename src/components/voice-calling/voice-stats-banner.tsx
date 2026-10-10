@@ -16,12 +16,14 @@ interface VoiceStatsBannerProps {
   stats: VoiceStatsOverview;
   onOpenTestCall: () => void;
   onOpenNewCampaign: () => void;
+  onOpenDialer?: () => void;
 }
 
 export function VoiceStatsBanner({
   stats,
   onOpenTestCall,
   onOpenNewCampaign,
+  onOpenDialer,
 }: VoiceStatsBannerProps) {
   return (
     <div className="space-y-4">
@@ -51,12 +53,22 @@ export function VoiceStatsBanner({
 
           {/* Quick Action CTAs */}
           <div className="flex items-center gap-2.5 flex-wrap">
+            {onOpenDialer && (
+              <button
+                type="button"
+                onClick={onOpenDialer}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 px-4 py-2.5 text-xs md:text-sm font-bold text-white shadow-lg shadow-emerald-600/25 transition-all hover:opacity-95 active:scale-95 cursor-pointer"
+              >
+                <PhoneCall className="h-4 w-4 animate-bounce" />
+                Live Dialer (UAE / KSA)
+              </button>
+            )}
             <button
               type="button"
               onClick={onOpenTestCall}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-2.5 text-xs md:text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition-all hover:opacity-95 active:scale-95 cursor-pointer"
             >
-              <PhoneCall className="h-4 w-4 animate-bounce" />
+              <PhoneCall className="h-4 w-4" />
               Live AI Sandbox Call
             </button>
             <button

@@ -17,6 +17,7 @@ import { MarketingCampaignsTab } from "@/components/voice-calling/marketing-camp
 import { CallHistoryTab } from "@/components/voice-calling/call-history-tab";
 import { AgentBuilderTab } from "@/components/voice-calling/agent-builder-tab";
 import { TelephonySettingsTab } from "@/components/voice-calling/telephony-settings-tab";
+import { LivePhoneDialerTab } from "@/components/voice-calling/live-phone-dialer-tab";
 
 import {
   getVoiceAgents,
@@ -41,10 +42,10 @@ import type {
 } from "@/types/voice-calling";
 import { useAuth } from "@/hooks/use-auth";
 
-type TabId = "receptionist" | "marketing" | "history" | "agents" | "telephony";
+type TabId = "dialer" | "receptionist" | "marketing" | "history" | "agents" | "telephony";
 
 export default function VoiceCallingPage() {
-  const [activeTab, setActiveTab] = useState<TabId>("receptionist");
+  const [activeTab, setActiveTab] = useState<TabId>("dialer");
   const [agents, setAgents] = useState<VoiceAgent[]>([]);
   const [phoneNumbers, setPhoneNumbers] = useState<VoicePhoneNumber[]>([]);
   const [calls, setCalls] = useState<VoiceCall[]>([]);
@@ -139,12 +140,29 @@ export default function VoiceCallingPage() {
       {/* 1. Header & Live Stats Banner */}
       <VoiceStatsBanner
         stats={stats}
+        onOpenDialer={() => setActiveTab("dialer")}
         onOpenTestCall={() => setActiveTab("receptionist")}
         onOpenNewCampaign={() => setActiveTab("marketing")}
       />
 
       {/* 2. Main Navigation Tabs */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-border/60 [scrollbar-width:none]">
+        <button
+          type="button"
+          onClick={() => setActiveTab("dialer")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs md:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+            activeTab === "dialer"
+              ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+          }`}
+        >
+          <PhoneCall className="h-4 w-4" />
+          <span>Live Phone Dialer (UAE / KSA)</span>
+          <span className="rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 font-mono">
+            🇦🇪 🇸🇦
+          </span>
+        </button>
+
         <button
           type="button"
           onClick={() => setActiveTab("receptionist")}
@@ -213,6 +231,15 @@ export default function VoiceCallingPage() {
 
       {/* 3. Tab Contents */}
       <div className="pt-1">
+        {activeTab === "dialer" && (
+          <LivePhoneDialerTab
+            agents={agents}
+            phoneNumbers={phoneNumbers}
+            onCallCompleted={handleCallCompleted}
+            onNavigateToTelephony={() => setActiveTab("telephony")}
+          />
+        )}
+
         {activeTab === "receptionist" && (
           <InboundReceptionistTab
             receptionistAgent={primaryReceptionist}
