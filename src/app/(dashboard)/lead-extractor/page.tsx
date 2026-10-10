@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { getCountryFromPhone, formatPhoneDisplay } from "@/lib/whatsapp/phone-country";
+import { isFictionalPhone } from "@/lib/whatsapp/phone-utils";
 import { toast } from "sonner";
 import {
   MapPin,
@@ -74,7 +75,7 @@ const DEFAULT_LEADS: ExtractedLead[] = [
     rating: 4.9,
     reviews: 310,
     website: "https://eliterealtypartners.com",
-    verifiedWhatsApp: true,
+    verifiedWhatsApp: false,
   },
   {
     id: "lead-4",
@@ -85,7 +86,7 @@ const DEFAULT_LEADS: ExtractedLead[] = [
     rating: 4.7,
     reviews: 142,
     website: "https://londonaesthetics.co.uk",
-    verifiedWhatsApp: true,
+    verifiedWhatsApp: false,
   },
   {
     id: "lead-5",
@@ -107,7 +108,7 @@ const DEFAULT_LEADS: ExtractedLead[] = [
     rating: 4.6,
     reviews: 78,
     website: "https://crestviewlaw.com",
-    verifiedWhatsApp: true,
+    verifiedWhatsApp: false,
   },
 ];
 
@@ -226,7 +227,13 @@ export default function LeadExtractorPage() {
       const data = await res.json();
       if (data.success && Array.isArray(data.leads) && data.leads.length > 0) {
         setLeads((prev) => [...data.leads, ...prev]);
-        toast.success(`Successfully extracted ${data.leads.length} verified leads from ${source}!`);
+        if (data.isSimulation) {
+          toast.info(
+            `Extracted ${data.leads.length} demo leads. For live businesses with real phone numbers, configure GOOGLE_MAPS_API_KEY in .env.local.`
+          );
+        } else {
+          toast.success(`Successfully extracted ${data.leads.length} verified leads from ${source}!`);
+        }
       } else {
         toast.error(data.error || "No leads returned for this query.");
       }
@@ -694,13 +701,22 @@ export default function LeadExtractorPage() {
                             <span className="font-mono font-medium text-foreground text-xs">
                               {formattedPhone || lead.phone}
                             </span>
-                            {lead.verifiedWhatsApp && (
+                            {lead.verifiedWhatsApp && !isFictionalPhone(lead.phone) && (
                               <span
                                 className="flex size-4 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500"
                                 title="Verified WhatsApp Number"
                               >
                                 <Check className="size-2.5 stroke-[3]" />
                               </span>
+                            )}
+                            {isFictionalPhone(lead.phone) && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] py-0 px-1 border-amber-500/30 text-amber-500 bg-amber-500/10"
+                                title="Fictional demo number — not a real WhatsApp user"
+                              >
+                                Demo
+                              </Badge>
                             )}
                           </div>
                         </td>
@@ -723,6 +739,12 @@ export default function LeadExtractorPage() {
                               size="sm"
                               title="Start WhatsApp Conversation"
                               onClick={() => {
+                                if (isFictionalPhone(lead.phone)) {
+                                  toast.error(
+                                    "This is a demo fictional number (+1...555...). WhatsApp messages cannot be delivered to dummy numbers."
+                                  );
+                                  return;
+                                }
                                 router.push(`/inbox?newChatPhone=${encodeURIComponent(lead.phone)}`);
                               }}
                               className="h-8 gap-1 rounded-lg border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400 text-xs px-2.5"

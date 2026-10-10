@@ -24,8 +24,10 @@ import {
   Sparkles,
   Building,
   Check,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { isFictionalPhone } from "@/lib/whatsapp/phone-utils";
 
 interface NewChatDialogProps {
   open: boolean;
@@ -83,6 +85,13 @@ ${companyDisplayName}`;
     if (!/^\d{8,15}$/.test(digits)) {
       toast.error(
         "Please enter a valid phone number with country code (e.g. +971501234567 or +923001234567)"
+      );
+      return;
+    }
+
+    if (isFictionalPhone(clean)) {
+      toast.error(
+        "Fictional test numbers (such as 555 prefix) do not have WhatsApp accounts. Please enter a real phone number."
       );
       return;
     }
@@ -165,8 +174,16 @@ ${companyDisplayName}`;
               required
               autoFocus
             />
+            {isFictionalPhone(phone) && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11px] text-amber-500 dark:text-amber-400 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+                <div className="leading-snug">
+                  <strong className="font-semibold">Placeholder number detected:</strong> Fictional numbers (e.g. +1...555...) do not have WhatsApp accounts and messages will fail. Please enter a real phone number.
+                </div>
+              </div>
+            )}
             <p className="text-[11px] text-muted-foreground">
-              Always include country code (e.g. +92 for Pakistan, +971 for UAE, +1 for US).
+              Always include country code. For Meta Sandbox / Test numbers, make sure recipient is added in your Meta Developer portal.
             </p>
           </div>
 

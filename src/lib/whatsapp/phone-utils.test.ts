@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isFictionalPhone,
   isRecipientNotAllowedError,
   isValidE164,
   normalizePhone,
@@ -215,3 +216,25 @@ describe("isRecipientNotAllowedError", () => {
     expect(isRecipientNotAllowedError("")).toBe(false);
   });
 });
+
+describe("isFictionalPhone", () => {
+  it("detects US 555 dummy numbers like +1 415 555 2671", () => {
+    expect(isFictionalPhone("+1 415 555 2671")).toBe(true);
+    expect(isFictionalPhone("+14155552671")).toBe(true);
+    expect(isFictionalPhone("14155552671")).toBe(true);
+    expect(isFictionalPhone("+1 212 555 0198")).toBe(true);
+  });
+
+  it("detects UK Ofcom fictional drama numbers", () => {
+    expect(isFictionalPhone("+44 7911 123456")).toBe(true);
+    expect(isFictionalPhone("07911 123456")).toBe(true);
+  });
+
+  it("returns false for legitimate phone numbers", () => {
+    expect(isFictionalPhone("+92 316 055 1876")).toBe(false);
+    expect(isFictionalPhone("+971 50 505 3639")).toBe(false);
+    expect(isFictionalPhone("+1 415 867 5309")).toBe(false);
+    expect(isFictionalPhone("")).toBe(false);
+  });
+});
+

@@ -17,6 +17,7 @@ import {
   LogOut,
   MapPin,
   MessageSquare,
+  PhoneCall,
   Radio,
   ReceiptText,
   Settings,
@@ -122,6 +123,11 @@ const navItems: NavItem[] = [
   },
   { href: "/flows", labelKey: "flows", icon: Workflow, beta: true },
   { href: "/agents", labelKey: "aiAgents", icon: Bot },
+  {
+    href: "/ai-calling",
+    labelKey: "aiCallingAgent",
+    icon: PhoneCall,
+  },
 ];
 
 const bottomNavItems = [

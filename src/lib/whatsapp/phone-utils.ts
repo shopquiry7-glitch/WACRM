@@ -138,3 +138,25 @@ export function phoneVariants(sanitized: string): string[] {
 export function isRecipientNotAllowedError(message: string): boolean {
   return /131030|not in allowed list|not in the allowed list/i.test(message)
 }
+
+/**
+ * Detects known fictional or placeholder phone numbers:
+ * - US/Canada (+1): Fictional 555 prefix (e.g. +1 415 555 2671, +1 212 555 0198)
+ * - UK (+44): Ofcom drama numbers (e.g. +44 7911 123456)
+ *
+ * WhatsApp does not have real accounts for fictional numbers.
+ */
+export function isFictionalPhone(phone: string): boolean {
+  if (!phone) return false
+  const digits = phone.replace(/\D/g, '')
+  // US / Canada NANP fictional 555 numbers (country code 1 + 3-digit area code + 555 + 4 digits)
+  // or 10-digit without leading 1
+  if (/^1?[2-9]\d{2}555\d{4}$/.test(digits)) {
+    return true
+  }
+  // UK Ofcom drama ranges (07911 123456 or 447911 123456)
+  if (/^(44|0)?7911\d{6}$/.test(digits)) {
+    return true
+  }
+  return false
+}

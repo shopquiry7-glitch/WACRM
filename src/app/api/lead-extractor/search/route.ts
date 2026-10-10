@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
       } else if (cKey === "sa") {
         phone = `+9665${(i % 9) + 0}${String(1000000 + i * 51928).slice(0, 6)}`;
       } else {
-        phone = `+1${(i % 7) + 2}12${String(5550000 + i * 372).slice(0, 7)}`;
+        phone = `+1${(i % 7) + 2}12${String(2140000 + i * 3821).slice(0, 7)}`;
       }
 
       const domainSlug = name.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -175,14 +175,15 @@ export async function POST(req: NextRequest) {
         reviews: 45 + (i * 17) % 350,
         website,
         mapsUrl,
-        verifiedWhatsApp: true,
+        verifiedWhatsApp: false,
         openNow: i % 4 !== 0,
       });
     }
 
     return NextResponse.json({
       success: true,
-      source: "Google Maps Deep Scraper Engine",
+      source: "Simulation Mode (Google Maps API Key required for live results)",
+      isSimulation: true,
       count: leads.length,
       leads,
     });
