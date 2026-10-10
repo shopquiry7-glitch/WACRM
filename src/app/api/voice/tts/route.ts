@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * High-fidelity Natural Indian Female Voice Audio Streamer
@@ -116,6 +118,27 @@ export async function GET(req: NextRequest) {
 
     if (!text) {
       return NextResponse.json({ error: 'Text query parameter is required' }, { status: 400 });
+    }
+
+    // If custom real voice file exists on server, serve it directly
+    try {
+      const customPath = path.join(process.cwd(), 'public', 'sounds', 'custom-maya-voice.mp3');
+      if (fs.existsSync(customPath)) {
+        const stats = fs.statSync(customPath);
+        if (stats.size > 1000) {
+          const fileBuffer = fs.readFileSync(customPath);
+          return new NextResponse(fileBuffer, {
+            status: 200,
+            headers: {
+              'Content-Type': 'audio/mpeg',
+              'Content-Length': fileBuffer.length.toString(),
+              'Cache-Control': 'public, max-age=31536000, immutable',
+            },
+          });
+        }
+      }
+    } catch {
+      // proceed with dynamic stream
     }
 
     // Determine optimal voice language

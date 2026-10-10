@@ -10,34 +10,66 @@ import path from 'path';
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const file = formData.get('file') as File | null;
+    let buffer: Buffer | null = null;
+    let filename = 'custom-maya-voice.mp3';
+    let mimeType = 'audio/mpeg';
 
-    if (!file) {
-      return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
+    const contentType = req.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const body = await req.json();
+      if (body.base64Audio) {
+        const matches = body.base64Audio.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches) {
+          mimeType = matches[1];
+          buffer = Buffer.from(matches[2], 'base64');
+        } else {
+          buffer = Buffer.from(body.base64Audio, 'base64');
+        }
+        filename = body.filename || filename;
+      }
+    } else {
+      const formData = await req.formData();
+      const file = formData.get('file') as File | null;
+      if (file) {
+        const bytes = await file.arrayBuffer();
+        buffer = Buffer.from(bytes);
+        filename = file.name;
+        mimeType = file.type || 'audio/mpeg';
+      }
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    const uploadsDir = path.join(process.cwd(), 'public', 'sounds');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    if (!buffer || buffer.length === 0) {
+      return NextResponse.json({ error: 'No audio data received' }, { status: 400 });
     }
 
-    const filePath = path.join(uploadsDir, 'custom-maya-voice.mp3');
-    fs.writeFileSync(filePath, buffer);
+    let publicUrl = `/sounds/custom-maya-voice.mp3?t=${Date.now()}`;
+    const base64DataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+
+    // Attempt to write to public/sounds directory if filesystem is writable
+    try {
+      const uploadsDir = path.join(process.cwd(), 'public', 'sounds');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      const filePath = path.join(uploadsDir, 'custom-maya-voice.mp3');
+      fs.writeFileSync(filePath, buffer);
+    } catch (fsErr) {
+      // On Vercel / serverless read-only environments, fallback to Base64 Data URL
+      console.warn('Filesystem read-only (serverless mode), using Base64 Data URL:', fsErr);
+      publicUrl = base64DataUrl;
+    }
 
     return NextResponse.json({
       success: true,
       message: "Custom real voice audio saved successfully as Maya's voice!",
-      url: `/sounds/custom-maya-voice.mp3?t=${Date.now()}`,
+      url: publicUrl,
+      dataUrl: base64DataUrl,
       size: buffer.length,
-      filename: file.name,
+      filename,
     });
   } catch (error) {
     console.error('Custom voice upload failed:', error);
-    return NextResponse.json({ error: 'Failed to upload custom voice' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to process custom voice audio' }, { status: 500 });
   }
 }
 

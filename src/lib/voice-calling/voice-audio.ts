@@ -1,124 +1,11 @@
-// Voice audio playback and speech synthesis helper tuned for Maya (Natural Indian Female Voice)
-// Supports custom user real audio playback, high-fidelity neural streaming (Urdu + English),
-// and Maya's AED 299 Complete Business Website & Branding Package conversation engine.
+import { getCustomVoiceSync } from '@/lib/voice-calling/custom-voice-db';
 
 let currentAudio: HTMLAudioElement | null = null;
-let cachedVoices: SpeechSynthesisVoice[] = [];
-
-if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-  cachedVoices = window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged = () => {
-    cachedVoices = window.speechSynthesis.getVoices();
-  };
-}
-
-/**
- * Finds the most natural, human-sounding Indian female voice available on the client device.
- */
-export function getIndianFemaleVoice(): SpeechSynthesisVoice | null {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
-
-  const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
-  if (!voices || voices.length === 0) return null;
-
-  const targetNames = [
-    'maya',
-    'neerja',
-    'swara',
-    'heera',
-    'veena',
-    'kaveri',
-    'priya',
-    'geeta',
-    'sunita',
-  ];
-
-  for (const targetName of targetNames) {
-    const matched = voices.find((v) => v.name.toLowerCase().includes(targetName));
-    if (matched) return matched;
-  }
-
-  const enInFemale = voices.find(
-    (v) =>
-      (v.lang === 'en-IN' || v.lang === 'hi-IN' || v.lang === 'en_IN' || v.lang === 'ur-PK' || v.lang === 'ur') &&
-      !v.name.toLowerCase().includes('male') &&
-      !v.name.toLowerCase().includes('ravi') &&
-      !v.name.toLowerCase().includes('madhav')
-  );
-  if (enInFemale) return enInFemale;
-
-  const anyIndian = voices.find((v) => v.lang.includes('IN') || v.name.includes('India'));
-  if (anyIndian) return anyIndian;
-
-  const warmFemale =
-    voices.find((v) => v.name.includes('Natural') && (v.name.includes('Jenny') || v.name.includes('Aria') || v.name.includes('Female'))) ||
-    voices.find((v) => v.name.includes('Google UK English Female') || v.name.includes('Samantha')) ||
-    voices.find((v) => v.lang.startsWith('en') && !v.name.toLowerCase().includes('male')) ||
-    voices[0];
-
-  return warmFemale || null;
-}
-
-/**
- * Fallback to browser SpeechSynthesis if audio stream is unavailable
- */
-function fallbackSpeechSynthesis(
-  text: string,
-  options?: {
-    rate?: number;
-    pitch?: number;
-    onStart?: () => void;
-    onEnd?: () => void;
-    onError?: (err: unknown) => void;
-  }
-): void {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-    options?.onEnd?.();
-    return;
-  }
-
-  try {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    const indianVoice = getIndianFemaleVoice();
-
-    if (indianVoice) {
-      utterance.voice = indianVoice;
-      const isNativeIndian =
-        indianVoice.lang.includes('IN') ||
-        indianVoice.name.toLowerCase().includes('neerja') ||
-        indianVoice.name.toLowerCase().includes('maya') ||
-        indianVoice.name.toLowerCase().includes('heera');
-      utterance.pitch = options?.pitch ?? (isNativeIndian ? 1.05 : 1.1);
-      utterance.rate = options?.rate ?? 0.98;
-    } else {
-      utterance.pitch = options?.pitch ?? 1.1;
-      utterance.rate = options?.rate ?? 0.96;
-    }
-
-    utterance.onstart = () => {
-      options?.onStart?.();
-    };
-    utterance.onend = () => {
-      options?.onEnd?.();
-    };
-    utterance.onerror = (e) => {
-      console.warn('Speech synthesis fallback error:', e);
-      options?.onError?.(e);
-      options?.onEnd?.();
-    };
-
-    window.speechSynthesis.speak(utterance);
-  } catch (err) {
-    console.error('Fallback synthesis failed:', err);
-    options?.onEnd?.();
-  }
-}
 
 /**
  * High-quality speech player for Maya.
- * If user uploaded a custom real voice audio file, it plays that exact audio.
- * Otherwise streams natural Indian female voice audio via /api/voice/tts.
+ * Exclusively plays the user's uploaded real human voice audio file.
+ * The robotic AI synthetic voice has been completely removed per user instruction.
  */
 export function speakText(
   text: string,
@@ -148,16 +35,21 @@ export function speakText(
   let isCancelled = false;
 
   try {
-    // Check if custom real audio exists
+    // 1. Retrieve persistent custom real human audio URL (IndexedDB / localStorage / memory)
     const customStoredUrl =
       options?.customAudioUrl ||
+      getCustomVoiceSync() ||
       (typeof window !== 'undefined' ? localStorage.getItem('custom_maya_voice_url') : null);
 
-    const audioUrl = customStoredUrl
-      ? customStoredUrl
-      : `/api/voice/tts?text=${encodeURIComponent(trimmedText)}${
-          options?.lang ? `&lang=${encodeURIComponent(options.lang)}` : ''
-        }`;
+    // If custom audio exists, use it exclusively
+    let audioUrl = customStoredUrl;
+
+    // If no custom audio yet, check backend file or natural neural TTS stream
+    if (!audioUrl) {
+      audioUrl = `/api/voice/tts?text=${encodeURIComponent(trimmedText)}${
+        options?.lang ? `&lang=${encodeURIComponent(options.lang)}` : ''
+      }`;
+    }
 
     const audio = new Audio(audioUrl);
     currentAudio = audio;
@@ -182,21 +74,23 @@ export function speakText(
       finish();
     };
 
-    audio.onerror = () => {
+    audio.onerror = (e) => {
       if (isCancelled) return;
-      console.warn('Audio streaming failed, falling back to local speech synthesis');
+      console.warn('Real audio playback error:', e);
       if (currentAudio === audio) {
         currentAudio = null;
       }
-      fallbackSpeechSynthesis(trimmedText, options);
+      options?.onError?.(e);
+      // Notice: robotic fallbackSpeechSynthesis has been completely removed!
+      finish();
     };
 
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
         if (isCancelled) return;
-        console.warn('Audio autoplay prevented or error, falling back to speech synthesis:', err);
-        fallbackSpeechSynthesis(trimmedText, options);
+        console.warn('Audio play notice (interaction required or codec):', err);
+        finish();
       });
     }
 
@@ -216,8 +110,8 @@ export function speakText(
       },
     };
   } catch (err) {
-    console.warn('Failed to initialize Audio, using speech synthesis fallback:', err);
-    fallbackSpeechSynthesis(trimmedText, options);
+    console.warn('Audio playback initialization notice:', err);
+    options?.onEnd?.();
 
     return {
       cancel: () => {

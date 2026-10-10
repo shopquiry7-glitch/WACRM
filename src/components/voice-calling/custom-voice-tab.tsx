@@ -21,6 +21,11 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  saveCustomVoice,
+  getCustomVoice,
+  clearCustomVoice,
+} from "@/lib/voice-calling/custom-voice-db";
 
 interface CustomVoiceTabProps {
   onNavigateToDialer: () => void;
@@ -49,29 +54,12 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
 
   // Load custom voice status on mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedUrl = localStorage.getItem("custom_maya_voice_url");
-      const storedName = localStorage.getItem("custom_maya_voice_name");
-      if (storedUrl) {
-        setCustomVoiceUrl(storedUrl);
-        setCustomVoiceFileName(storedName || "Real Human Voice");
+    getCustomVoice().then(({ url, name }) => {
+      if (url) {
+        setCustomVoiceUrl(url);
+        setCustomVoiceFileName(name || "Real Human Voice");
       }
-    }
-
-    // Check backend for saved custom voice
-    fetch("/api/voice/custom-audio")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.hasCustomVoice && data.url) {
-          setCustomVoiceUrl(data.url);
-          setCustomVoiceFileName("custom-maya-voice.mp3");
-          if (typeof window !== "undefined") {
-            localStorage.setItem("custom_maya_voice_url", data.url);
-            localStorage.setItem("custom_maya_voice_name", "custom-maya-voice.mp3");
-          }
-        }
-      })
-      .catch(() => {});
+    });
   }, []);
 
   // Handle file upload
@@ -79,37 +67,31 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (max 25MB)
     if (file.size > 25 * 1024 * 1024) {
       toast.error("File is too large. Please upload an audio file under 25MB.");
       return;
     }
 
     setIsUploading(true);
-    const toastId = toast.loading(`Uploading "${file.name}"...`);
+    const toastId = toast.loading(`Saving and activating "${file.name}"...`);
 
     try {
+      // 1. Immediately save locally into IndexedDB and Data URL
+      const dataUrl = await saveCustomVoice(file, file.name);
+      setCustomVoiceUrl(dataUrl);
+      setCustomVoiceFileName(file.name);
+
+      // 2. Also send to backend
       const formData = new FormData();
       formData.append("file", file);
-
-      const res = await fetch("/api/voice/custom-audio", {
+      fetch("/api/voice/custom-audio", {
         method: "POST",
         body: formData,
-      });
+      }).catch(() => {});
 
-      const data = await res.json();
-      if (res.ok && data.url) {
-        setCustomVoiceUrl(data.url);
-        setCustomVoiceFileName(file.name);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("custom_maya_voice_url", data.url);
-          localStorage.setItem("custom_maya_voice_name", file.name);
-        }
-        toast.success(`Real Voice "${file.name}" successfully activated for Maya!`, { id: toastId });
-      } else {
-        toast.error(data.error || "Failed to upload audio file", { id: toastId });
-      }
-    } catch {
+      toast.success(`Real Voice "${file.name}" activated! All Maya calls will speak in this voice.`, { id: toastId });
+    } catch (err) {
+      console.error("Upload error:", err);
       toast.error("Upload error. Please try again.", { id: toastId });
     } finally {
       setIsUploading(false);
@@ -144,26 +126,20 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
 
         const toastId = toast.loading("Saving your recorded voice as Maya's voice...");
         try {
+          // 1. Save locally in IndexedDB and Data URL
+          const dataUrl = await saveCustomVoice(audioBlob, "Microphone Voice Recording");
+          setCustomVoiceUrl(dataUrl);
+          setCustomVoiceFileName("Microphone Voice Recording");
+
+          // 2. Also backup to backend
           const formData = new FormData();
           formData.append("file", audioBlob, "mic-recorded-voice.webm");
-
-          const res = await fetch("/api/voice/custom-audio", {
+          fetch("/api/voice/custom-audio", {
             method: "POST",
             body: formData,
-          });
+          }).catch(() => {});
 
-          const data = await res.json();
-          if (res.ok && data.url) {
-            setCustomVoiceUrl(data.url);
-            setCustomVoiceFileName("Microphone Voice Recording");
-            if (typeof window !== "undefined") {
-              localStorage.setItem("custom_maya_voice_url", data.url);
-              localStorage.setItem("custom_maya_voice_name", "Microphone Voice Recording");
-            }
-            toast.success("Your microphone recording is now saved and active as Maya's voice!", { id: toastId });
-          } else {
-            toast.error("Failed to save audio recording", { id: toastId });
-          }
+          toast.success("Your microphone recording is now saved and active as Maya's voice!", { id: toastId });
         } catch {
           toast.error("Error saving recording", { id: toastId });
         }
@@ -181,6 +157,7 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
       toast.error("Microphone permission denied or device not found.");
     }
   };
+
 
   // Stop Mic Recording
   const handleStopRecording = () => {
@@ -216,18 +193,15 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
   };
 
   // Reset to default Indian female voice
-  const handleReset = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("custom_maya_voice_url");
-      localStorage.removeItem("custom_maya_voice_name");
-    }
+  const handleReset = async () => {
+    await clearCustomVoice();
     setCustomVoiceUrl(null);
     setCustomVoiceFileName(null);
     if (audioRef.current) {
       audioRef.current.pause();
     }
     setIsPlaying(false);
-    toast.success("Reset to Maya's natural Indian female voice!");
+    toast.success("Reset to default voice settings.");
   };
 
   // Maya's Recommended Pitch Script

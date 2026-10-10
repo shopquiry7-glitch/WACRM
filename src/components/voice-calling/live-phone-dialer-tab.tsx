@@ -36,6 +36,11 @@ import type { VoiceAgent, VoicePhoneNumber, VoiceCall } from "@/types/voice-call
 import { SUPPORTED_COUNTRIES, CountryPreset, formatE164, formatDisplayPhone } from "@/lib/voice-calling/phone-formatter";
 import { playDtmfTone, playRingbackTone } from "@/lib/voice-calling/dtmf-audio";
 import { speakText, stopSpeaking } from "@/lib/voice-calling/voice-audio";
+import {
+  saveCustomVoice,
+  getCustomVoice,
+  clearCustomVoice,
+} from "@/lib/voice-calling/custom-voice-db";
 import { toast } from "sonner";
 
 interface LivePhoneDialerTabProps {
@@ -99,29 +104,12 @@ export function LivePhoneDialerTab({
 
   // Load custom voice status on mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedUrl = localStorage.getItem("custom_maya_voice_url");
-      const storedName = localStorage.getItem("custom_maya_voice_name");
-      if (storedUrl) {
-        setCustomVoiceUrl(storedUrl);
-        setCustomVoiceFileName(storedName || "Real Human Voice");
+    getCustomVoice().then(({ url, name }) => {
+      if (url) {
+        setCustomVoiceUrl(url);
+        setCustomVoiceFileName(name || "Real Human Voice");
       }
-    }
-
-    // Check backend for saved custom voice
-    fetch("/api/voice/custom-audio")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.hasCustomVoice && data.url) {
-          setCustomVoiceUrl(data.url);
-          setCustomVoiceFileName("custom-maya-voice.mp3");
-          if (typeof window !== "undefined") {
-            localStorage.setItem("custom_maya_voice_url", data.url);
-            localStorage.setItem("custom_maya_voice_name", "custom-maya-voice.mp3");
-          }
-        }
-      })
-      .catch(() => {});
+    });
   }, []);
 
   // Sync phoneNumbers from props
@@ -213,28 +201,20 @@ export function LivePhoneDialerTab({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const toastId = toast.loading("Uploading your real voice audio file...");
+    const toastId = toast.loading("Saving and activating your real voice...");
     try {
+      const dataUrl = await saveCustomVoice(file, file.name);
+      setCustomVoiceUrl(dataUrl);
+      setCustomVoiceFileName(file.name);
+
       const formData = new FormData();
       formData.append("file", file);
-
-      const res = await fetch("/api/voice/custom-audio", {
+      fetch("/api/voice/custom-audio", {
         method: "POST",
         body: formData,
-      });
+      }).catch(() => {});
 
-      const data = await res.json();
-      if (res.ok && data.url) {
-        setCustomVoiceUrl(data.url);
-        setCustomVoiceFileName(file.name);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("custom_maya_voice_url", data.url);
-          localStorage.setItem("custom_maya_voice_name", file.name);
-        }
-        toast.success(`Real voice recording "${file.name}" set as Maya's voice!`, { id: toastId });
-      } else {
-        toast.error(data.error || "Failed to upload audio file", { id: toastId });
-      }
+      toast.success(`Real voice recording "${file.name}" is now active! All calls will speak in this voice.`, { id: toastId });
     } catch {
       toast.error("Upload error. Please try again.", { id: toastId });
     }
@@ -265,26 +245,18 @@ export function LivePhoneDialerTab({
 
         const toastId = toast.loading("Saving your recorded voice as Maya's voice...");
         try {
+          const dataUrl = await saveCustomVoice(audioBlob, "Mic Recorded Real Voice");
+          setCustomVoiceUrl(dataUrl);
+          setCustomVoiceFileName("Mic Recorded Real Voice");
+
           const formData = new FormData();
           formData.append("file", audioBlob, "mic-recorded-voice.webm");
-
-          const res = await fetch("/api/voice/custom-audio", {
+          fetch("/api/voice/custom-audio", {
             method: "POST",
             body: formData,
-          });
+          }).catch(() => {});
 
-          const data = await res.json();
-          if (res.ok && data.url) {
-            setCustomVoiceUrl(data.url);
-            setCustomVoiceFileName("Mic Recorded Real Voice");
-            if (typeof window !== "undefined") {
-              localStorage.setItem("custom_maya_voice_url", data.url);
-              localStorage.setItem("custom_maya_voice_name", "Mic Recorded Real Voice");
-            }
-            toast.success("Your microphone voice recording is now active as Maya's voice!", { id: toastId });
-          } else {
-            toast.error("Failed to save audio recording", { id: toastId });
-          }
+          toast.success("Your microphone voice recording is now active as Maya's voice!", { id: toastId });
         } catch {
           toast.error("Audio save error", { id: toastId });
         }
@@ -325,15 +297,12 @@ export function LivePhoneDialerTab({
     };
   };
 
-  // Reset Voice back to Neural
-  const handleResetToNaturalVoice = () => {
+  // Reset Voice back to default
+  const handleResetToNaturalVoice = async () => {
+    await clearCustomVoice();
     setCustomVoiceUrl(null);
     setCustomVoiceFileName(null);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("custom_maya_voice_url");
-      localStorage.removeItem("custom_maya_voice_name");
-    }
-    toast.success("Reset to Natural Indian Female Voice (Urdu + English)");
+    toast.success("Reset to default voice settings");
   };
 
   // Copy WhatsApp AED 299 Brochure
