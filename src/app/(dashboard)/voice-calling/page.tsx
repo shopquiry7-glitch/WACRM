@@ -10,6 +10,7 @@ import {
   Settings,
   Sparkles,
   PhoneForwarded,
+  Mic,
 } from "lucide-react";
 import { VoiceStatsBanner } from "@/components/voice-calling/voice-stats-banner";
 import { InboundReceptionistTab } from "@/components/voice-calling/inbound-receptionist-tab";
@@ -18,6 +19,7 @@ import { CallHistoryTab } from "@/components/voice-calling/call-history-tab";
 import { AgentBuilderTab } from "@/components/voice-calling/agent-builder-tab";
 import { TelephonySettingsTab } from "@/components/voice-calling/telephony-settings-tab";
 import { LivePhoneDialerTab } from "@/components/voice-calling/live-phone-dialer-tab";
+import { CustomVoiceTab } from "@/components/voice-calling/custom-voice-tab";
 
 import {
   getVoiceAgents,
@@ -42,7 +44,7 @@ import type {
 } from "@/types/voice-calling";
 import { useAuth } from "@/hooks/use-auth";
 
-type TabId = "dialer" | "receptionist" | "marketing" | "history" | "agents" | "telephony";
+type TabId = "dialer" | "custom_voice" | "receptionist" | "marketing" | "history" | "agents" | "telephony";
 
 export default function VoiceCallingPage() {
   const [activeTab, setActiveTab] = useState<TabId>("dialer");
@@ -141,6 +143,7 @@ export default function VoiceCallingPage() {
       <VoiceStatsBanner
         stats={stats}
         onOpenDialer={() => setActiveTab("dialer")}
+        onOpenUploadVoice={() => setActiveTab("custom_voice")}
         onOpenTestCall={() => setActiveTab("receptionist")}
         onOpenNewCampaign={() => setActiveTab("marketing")}
       />
@@ -160,6 +163,23 @@ export default function VoiceCallingPage() {
           <span>Live Phone Dialer (UAE / KSA)</span>
           <span className="rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 font-mono">
             🇦🇪 🇸🇦
+          </span>
+        </button>
+
+        {/* PROMINENT UPLOAD REAL VOICE TAB */}
+        <button
+          type="button"
+          onClick={() => setActiveTab("custom_voice")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs md:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+            activeTab === "custom_voice"
+              ? "bg-gradient-to-r from-rose-600 to-pink-600 text-white shadow-md shadow-rose-600/30 ring-2 ring-rose-400/40"
+              : "text-rose-400 bg-rose-500/10 border border-rose-500/25 hover:bg-rose-500/20"
+          }`}
+        >
+          <Mic className="h-4 w-4 text-rose-300 animate-pulse" />
+          <span>🎙️ Upload Real Voice (.mp3 / Mic)</span>
+          <span className="rounded-full bg-rose-500/30 text-rose-200 text-[10px] px-2 py-0.5 font-extrabold uppercase">
+            Active
           </span>
         </button>
 
@@ -238,6 +258,10 @@ export default function VoiceCallingPage() {
             onCallCompleted={handleCallCompleted}
             onNavigateToTelephony={() => setActiveTab("telephony")}
           />
+        )}
+
+        {activeTab === "custom_voice" && (
+          <CustomVoiceTab onNavigateToDialer={() => setActiveTab("dialer")} />
         )}
 
         {activeTab === "receptionist" && (

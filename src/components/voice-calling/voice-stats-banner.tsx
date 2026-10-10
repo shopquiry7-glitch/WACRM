@@ -17,6 +17,7 @@ interface VoiceStatsBannerProps {
   onOpenTestCall: () => void;
   onOpenNewCampaign: () => void;
   onOpenDialer?: () => void;
+  onOpenUploadVoice?: () => void;
 }
 
 export function VoiceStatsBanner({
@@ -24,6 +25,7 @@ export function VoiceStatsBanner({
   onOpenTestCall,
   onOpenNewCampaign,
   onOpenDialer,
+  onOpenUploadVoice,
 }: VoiceStatsBannerProps) {
   return (
     <div className="space-y-4">
@@ -53,6 +55,16 @@ export function VoiceStatsBanner({
 
           {/* Quick Action CTAs */}
           <div className="flex items-center gap-2.5 flex-wrap">
+            {onOpenUploadVoice && (
+              <button
+                type="button"
+                onClick={onOpenUploadVoice}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 px-4 py-2.5 text-xs md:text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <Zap className="h-4 w-4 text-amber-300 animate-pulse" />
+                🎙️ Upload Real Voice
+              </button>
+            )}
             {onOpenDialer && (
               <button
                 type="button"

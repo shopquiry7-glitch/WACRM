@@ -555,6 +555,84 @@ export function LivePhoneDialerTab({
         </div>
       </div>
 
+      {/* PROMINENT REAL VOICE ACTION BAR */}
+      <div className="rounded-2xl border-2 border-violet-500/40 bg-gradient-to-r from-violet-950/50 via-purple-900/25 to-card p-4 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className={`p-3 rounded-2xl ${customVoiceUrl ? "bg-emerald-500/20 text-emerald-400" : "bg-violet-500/20 text-violet-400"}`}>
+            <FileAudio className="h-6 w-6" />
+          </div>
+          <div>
+            <div className="text-sm font-bold text-foreground flex items-center gap-2 flex-wrap">
+              <span>Maya&apos;s Active Voice:</span>
+              <span className="text-violet-300 font-semibold underline">
+                {customVoiceUrl ? (customVoiceFileName || "Custom Real Voice Audio") : "Maya Natural Indian Female"}
+              </span>
+              {customVoiceUrl ? (
+                <span className="bg-emerald-500/20 text-emerald-300 text-[11px] px-2 py-0.5 rounded-full font-bold">
+                  ✓ Real Human Voice Active
+                </span>
+              ) : (
+                <span className="bg-violet-500/20 text-violet-300 text-[11px] px-2 py-0.5 rounded-full font-bold">
+                  Natural AI Female
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {customVoiceUrl
+                ? "Client ko phone call par aapki real audio recording sunai degi."
+                : "Apni aawaz use karne ke liye Upload Voice (.mp3) dabayein ya Mic se direct record karein."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md transition hover:scale-105 active:scale-95 cursor-pointer"
+          >
+            <Upload className="h-4 w-4" />
+            <span>Upload Real Voice (.mp3 / .wav)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={isRecordingAudio ? handleStopMicRecording : handleStartMicRecording}
+            className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer ${
+              isRecordingAudio
+                ? "bg-rose-600 text-white animate-pulse"
+                : "bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/25"
+            }`}
+          >
+            {isRecordingAudio ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            <span>{isRecordingAudio ? `Stop (${recordingSeconds}s)` : "Record with Mic"}</span>
+          </button>
+
+          {customVoiceUrl && (
+            <button
+              type="button"
+              onClick={handlePreviewCustomVoice}
+              disabled={isPlayingPreview}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500 hover:text-white text-xs font-bold transition cursor-pointer"
+            >
+              <Play className="h-3.5 w-3.5" />
+              <span>{isPlayingPreview ? "Playing..." : "Test Voice"}</span>
+            </button>
+          )}
+
+          {customVoiceUrl && (
+            <button
+              type="button"
+              onClick={handleResetToNaturalVoice}
+              className="p-2.5 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+              title="Reset to natural voice"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Interactive Softphone Keypad (7 Cols) */}
         <div className="lg:col-span-7 space-y-5">
