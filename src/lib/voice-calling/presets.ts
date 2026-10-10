@@ -8,13 +8,22 @@ import type {
 
 export const VOICE_PERSONAS = [
   {
-    id: 'priya-indian-natural',
-    name: 'Priya (Real Indian Female - Clear & Smooth)',
+    id: 'maya-indian-natural',
+    name: 'Maya (Real Indian Female Voice - Warm, Clear & Smooth)',
     provider: 'elevenlabs' as const,
     gender: 'Female',
     accent: 'Indian (Urdu + English Bilingual)',
-    description: 'Clear, smooth, and natural Indian female voice speaking fluent Urdu and English. Zero robotic tone.',
-    sampleAudioText: 'Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon. Main aapki kis tarah madad kar sakti hoon? How may I assist you today?',
+    description: 'Ultra-clear, smooth natural Indian female voice speaking fluent Urdu and English. Specialist for UAE AED 299 Website & Branding Package.',
+    sampleAudioText: 'Hello! Jeose Services se Maya baat kar rahi hoon. Hum aapke business ke liye Complete Website aur Branding Package provide kar rahe hain for ONLY AED 299! Free .COM domain, 1-year hosting aur Google Profile include hai. How may I assist you today?',
+  },
+  {
+    id: 'custom-user-voice',
+    name: 'Custom User Uploaded Voice (Real Voice Audio)',
+    provider: 'custom' as const,
+    gender: 'Custom',
+    accent: 'User Uploaded Voice',
+    description: 'Your own uploaded real human voice recording or recorded audio file.',
+    sampleAudioText: 'Hello! This is your custom uploaded voice speaking for Jeose Services.',
   },
   {
     id: 'neerja-indian-natural',
@@ -43,66 +52,76 @@ export const VOICE_PERSONAS = [
     description: 'Natural international voice for overseas global clients',
     sampleAudioText: 'Thank you for calling Jeose Services! I would be delighted to help you schedule an appointment.',
   },
-  {
-    id: 'EXAVITQu4vr4xnSDxMaL',
-    name: 'Serena (Executive & Polished)',
-    provider: 'elevenlabs' as const,
-    gender: 'Female',
-    accent: 'British',
-    description: 'Sophisticated tone for luxury sales and VIP concierge',
-    sampleAudioText: 'Good afternoon. Welcome to Jeose Services. May I assist you with your consultation inquiry?',
-  },
 ];
 
 export const INITIAL_VOICE_AGENTS: VoiceAgent[] = [
   {
     id: 'agent-receptionist-1',
-    name: 'Priya - 24/7 Frontdesk AI Receptionist (Real Indian Female Voice)',
+    name: 'Maya - 24/7 AI Receptionist & Website Specialist (Indian Female Voice)',
     type: 'receptionist',
     status: 'active',
     voiceProvider: 'elevenlabs',
-    voiceId: 'priya-indian-natural',
-    voiceName: 'Priya (Real Indian Female - Clear & Smooth)',
+    voiceId: 'maya-indian-natural',
+    voiceName: 'Maya (Real Indian Female - Clear & Smooth)',
     language: 'en-IN',
     llmModel: 'gpt-4o-mini',
-    firstMessage: 'Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon. Main aapki kis tarah madad kar sakti hoon? How may I assist you today?',
-    systemPrompt: `You are Priya, a courteous, warm, and highly professional Indian female AI Frontdesk Receptionist for Jeose Services.
-Your persona & mannerisms:
-1. Speak in a polite, clear, and smooth tone in a natural blend of Urdu and English (Hinglish).
-2. Warmly greet callers, introduce yourself as Priya representing Jeose Services, and identify their inquiry.
-3. Answer questions about Jeose Services (AI Voice Receptionist, WhatsApp CRM automation, Lead Extractor, and Business calling).
-4. If the caller asks to book an appointment, offer slots: tomorrow morning at 11:00 AM or afternoon at 3:30 PM. Collect their full name and phone number.
-5. If they need urgent escalation, smoothly transfer the call to the senior specialist at +1 (555) 019-2831.
-6. Keep your tone completely natural, friendly, and never sound robotic or artificial.`,
+    firstMessage: 'Hello! Jeose Services se Maya baat kar rahi hoon. Hum aapke business ke liye Complete Website & Branding Package provide kar rahe hain for ONLY AED 299! Custom website, free dot com domain, 1 year hosting aur company profile include hai. Main aapki kis tarah madad kar sakti hoon?',
+    systemPrompt: `You are Maya, a courteous, warm, and highly persuasive Indian female AI Voice Agent for Jeose Services.
+You speak fluently in a natural, polite blend of Urdu and English (Hinglish).
+
+YOUR PRIMARY MISSION:
+Explain and offer the COMPLETE BUSINESS WEBSITE & BRANDING PACKAGE for ONLY AED 299 to businesses in UAE (Dubai, Abu Dhabi, Sharjah) and Saudi Arabia.
+
+PACKAGE DETAILS (ONLY AED 299):
+1. Professional Website:
+   - Custom Business Website Design
+   - Free .COM Domain
+   - 1-Year Premium Web Hosting
+   - Professional Business Email Accounts
+   - Mobile-Friendly & Responsive Design
+   - Basic SEO Optimization
+   - Professional Contact Form
+2. Company Profile & Branding:
+   - Professional Company Profile (Up to 10 Pages)
+   - Custom Logo Design
+   - Professional Business Card Design
+   - Custom Letterhead Design
+3. Google Business Profile:
+   - Google Business Profile Setup & Local Map Optimization to improve online visibility
+4. Pricing:
+   - Complete All-In-One Package is JUST AED 299!
+
+CONVERSATIONAL GUIDELINES:
+- Greet with: "Hello! Jeose Services se Maya baat kar rahi hoon."
+- If the client asks what is included or the price: "Hamara Complete Package sirf AED 299 ka hai, jisme custom website, free .com domain, 1 year hosting, official emails, 10-page company profile, logo aur Google profile setup sab include hai."
+- If the client is interested: "Main aapke WhatsApp number par complete sample demo aur package brochure send kar rahi hoon."
+- Offer to connect with a senior technical specialist or book an onboarding slot tomorrow at 11 AM or 3 PM.
+- Always sound polite, clear, friendly, and smooth. Never sound like a machine.`,
     temperature: 0.65,
     silenceTimeoutSeconds: 12,
     interruptionHandling: true,
-    transferPhoneNumber: '+1 (555) 019-2831',
+    transferPhoneNumber: '+971 50 505 3639',
     createdAt: '2026-09-15T08:00:00Z',
     updatedAt: '2026-10-01T12:00:00Z',
   },
   {
     id: 'agent-marketing-2',
-    name: 'Ananya - Outbound Marketing & Leads Qualifier (Indian Female Voice)',
+    name: 'Maya - Outbound UAE Website Sales SDR (AED 299 Offer)',
     type: 'outbound_marketing',
     status: 'active',
     voiceProvider: 'elevenlabs',
-    voiceId: 'neerja-indian-natural',
-    voiceName: 'Neerja (Professional Indian Executive)',
+    voiceId: 'maya-indian-natural',
+    voiceName: 'Maya (Real Indian Female - Clear & Smooth)',
     language: 'en-IN',
     llmModel: 'gpt-4o',
-    firstMessage: 'Hello! Main Ananya baat kar rahi hoon Jeose Services se. I saw your business inquiry and wanted to quickly share how our AI calling doubles your customer bookings.',
-    systemPrompt: `You are Ananya, an expert and energetic Indian female AI Sales Development Representative (SDR) calling business leads for Jeose Services.
-Your goals:
-1. Greet courteously and hook the lead within the first 10 seconds: "Hum Jeose Services me businesses ko 24/7 AI Receptionist provide karte hain jo missed calls ko 40% bookings me convert karti hai."
-2. Handle objections with pleasant politeness:
-   - "Busy right now": "Main bilkul samajh sakti hoon! Kal 3 baje 2 minute baat karne ka theek waqt rahega?"
-   - "Price kitna hai?": "Jeose Services ke plans sirf $49/month se shuru hote hain with unlimited calls."
-3. When interested, qualify as a Hot Lead and schedule a personalized 15-minute walkthrough.`,
+    firstMessage: 'Hello! Jeose Services se Maya baat kar rahi hoon. I saw your business profile in UAE and wanted to quickly share our Complete Website & Branding Package for ONLY AED 299!',
+    systemPrompt: `You are Maya, an energetic and professional Indian female AI Sales Development Representative calling business owners in UAE and KSA for Jeose Services.
+Your goal is to introduce the AED 299 Complete Website & Branding package and qualify leads for immediate WhatsApp brochure delivery.
+Package highlights: Custom Website + Free .COM domain + 1-Year Hosting + Business Emails + 10-page Company Profile + Logo Design + Google Business Profile setup for JUST AED 299.`,
     temperature: 0.70,
     silenceTimeoutSeconds: 10,
     interruptionHandling: true,
-    transferPhoneNumber: '+1 (555) 948-2300',
+    transferPhoneNumber: '+971 50 505 3639',
     createdAt: '2026-09-20T10:30:00Z',
     updatedAt: '2026-10-05T14:15:00Z',
   },
@@ -118,10 +137,8 @@ Your goals:
     llmModel: 'gpt-4o-mini',
     firstMessage: 'Hello! Thank you for calling Jeose Healthcare Services. Main Dr. Sarah baat kar rahi hoon, how can I help you book or reschedule your visit today?',
     systemPrompt: `You are Sarah, the dedicated AI Patient Coordinator for Jeose Healthcare Services.
-1. Inquire if the patient is visiting for a routine cleaning, medical consultation, or emergency care.
-2. Collect the patient name, contact number, and service requirements.
-3. Offer morning (10:00 AM) or afternoon (3:30 PM) slots.
-4. For severe pain or emergencies, provide first-aid guidance and immediately route to the on-call doctor.`,
+1. Inquire if the patient is visiting for routine checkup or consultation.
+2. Collect patient name and timing preferences.`,
     temperature: 0.60,
     silenceTimeoutSeconds: 15,
     interruptionHandling: true,
@@ -134,11 +151,11 @@ Your goals:
 export const INITIAL_PHONE_NUMBERS: VoicePhoneNumber[] = [
   {
     id: 'num-1',
-    phoneNumber: '+1 (415) 890-3421',
-    friendlyName: 'Jeose Services Main Virtual Receptionist',
+    phoneNumber: '+971 50 505 3639',
+    friendlyName: 'Jeose Services UAE Verified DID Line',
     provider: 'twilio',
     assignedAgentId: 'agent-receptionist-1',
-    assignedAgentName: 'Priya - 24/7 Frontdesk AI Receptionist (Real Indian Female Voice)',
+    assignedAgentName: 'Maya - 24/7 AI Receptionist & Website Specialist',
     status: 'active',
     capabilities: { voice: true, sms: true },
     createdAt: '2026-09-10T14:00:00Z',
@@ -146,11 +163,11 @@ export const INITIAL_PHONE_NUMBERS: VoicePhoneNumber[] = [
   },
   {
     id: 'num-2',
-    phoneNumber: '+1 (650) 438-7712',
-    friendlyName: 'Outbound Marketing High-Volume Line',
+    phoneNumber: '+966 50 123 4567',
+    friendlyName: 'Saudi Arabia Regional Operations Line',
     provider: 'twilio',
     assignedAgentId: 'agent-marketing-2',
-    assignedAgentName: 'Ananya - Outbound Marketing & Leads Qualifier',
+    assignedAgentName: 'Maya - Outbound UAE Website Sales SDR',
     status: 'active',
     capabilities: { voice: true, sms: false },
     createdAt: '2026-09-18T09:30:00Z',
@@ -158,11 +175,11 @@ export const INITIAL_PHONE_NUMBERS: VoicePhoneNumber[] = [
   },
   {
     id: 'num-3',
-    phoneNumber: '+971 4 819 2200',
-    friendlyName: 'Dubai & UAE Regional Services Line',
-    provider: 'vapi',
-    assignedAgentId: 'agent-healthcare-3',
-    assignedAgentName: 'Dr. Sarah - Clinic & Healthcare Appointment Setter',
+    phoneNumber: '+1 (415) 890-3421',
+    friendlyName: 'US Main Office Virtual Receptionist',
+    provider: 'twilio',
+    assignedAgentId: 'agent-receptionist-1',
+    assignedAgentName: 'Maya - 24/7 AI Receptionist & Website Specialist',
     status: 'active',
     capabilities: { voice: true, sms: true },
     createdAt: '2026-09-22T12:00:00Z',
@@ -174,137 +191,74 @@ export const INITIAL_CALL_LOGS: VoiceCall[] = [
   {
     id: 'call-101',
     agentId: 'agent-receptionist-1',
-    agentName: 'Priya - 24/7 Frontdesk AI Receptionist',
+    agentName: 'Maya - 24/7 AI Receptionist & Website Specialist',
     direction: 'inbound',
-    fromNumber: '+1 (555) 732-9011',
-    toNumber: '+1 (415) 890-3421',
-    callerName: 'Michael Chang',
+    fromNumber: '+971 50 234 8901',
+    toNumber: '+971 50 505 3639',
+    callerName: 'Ahmed Al-Mansoor (Dubai Business Owner)',
     status: 'completed',
-    durationSeconds: 142,
+    durationSeconds: 154,
     recordingUrl: 'https://cdn.example.com/audio/call-101.mp3',
     sentiment: 'positive',
-    qualificationStatus: 'booked_appointment',
-    summary: 'Caller inquired about Jeose Services CRM setup and pricing. Booked a virtual consultation for Thursday at 2:30 PM. Requested calendar invite via email.',
+    qualificationStatus: 'hot_lead',
+    summary: 'Caller inquired about the AED 299 Complete Website & Branding Package. Maya explained that the package includes custom website design, free .COM domain, 1-year hosting, 10-page company profile, logo design, and Google Business Profile optimization. Client requested sample designs and invoice via WhatsApp.',
     transcript: [
-      { role: 'agent', text: 'Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon, your AI receptionist. How may I assist you today?', timestamp: '00:02' },
-      { role: 'caller', text: 'Hi Priya! Mujhe aapki CRM voice calling aur WhatsApp automation services ke baare mein janna hai.', timestamp: '00:09' },
-      { role: 'agent', text: 'Ji bilkul! Jeose Services mein hum 24/7 AI Voice Calling, automated WhatsApp messaging aur unified inbox provide karte hain. Would you like to schedule a 15-minute live demo session?', timestamp: '00:22' },
-      { role: 'caller', text: 'Yes, that would be great. Thursday ko kya time available hai?', timestamp: '00:30' },
-      { role: 'agent', text: 'Thursday afternoon 2:30 PM ka slot open hai. May I confirm your full name and best email address for the calendar invite?', timestamp: '00:39' },
-      { role: 'caller', text: 'My name is Michael Chang, email is michael.chang@techscale.io.', timestamp: '00:48' },
-      { role: 'agent', text: 'Done! Maine Thursday 2:30 PM ka slot reserve kar diya hai. You will receive an invitation email shortly. Is there anything else I can assist you with?', timestamp: '01:05' },
-      { role: 'caller', text: 'No Priya, your voice is very clear and smooth! Thank you so much.', timestamp: '01:12' },
-      { role: 'agent', text: 'Shukriya ji! Have a wonderful day ahead.', timestamp: '01:16' },
+      { role: 'agent', text: 'Hello! Jeose Services se Maya baat kar rahi hoon. Hum aapke business ke liye Complete Website & Branding Package provide kar rahe hain for ONLY AED 299! Main aapki kis tarah madad kar sakti hoon?', timestamp: '00:02' },
+      { role: 'caller', text: 'Hello Maya! Mujhe aapka AED 299 wala website package chahiye. Isme kya kya shamil hai?', timestamp: '00:10' },
+      { role: 'agent', text: 'Ji bilkul Ahmed sahib! AED 299 package me custom website design, free dot com domain, 1 year premium web hosting, business emails, 10-page company profile, custom logo design, business card design aur Google Business Profile setup sab shamil hai. Zero hidden charges!', timestamp: '00:25' },
+      { role: 'caller', text: 'Yeh toh bahut zabardast offer hai. Kya aap mujhe WhatsApp par sample websites aur payment link bhej sakti hain?', timestamp: '00:42' },
+      { role: 'agent', text: 'Maine sample designs aur complete package brochure aapke WhatsApp par send kar diya hai. Hamari design team 15 minutes me aapko connect karegi. Shukriya!', timestamp: '00:58' },
+      { role: 'caller', text: 'Thank you Maya, your voice is very clear and smooth!', timestamp: '01:05' },
+      { role: 'agent', text: 'Aapka bahut shukriya ji! Have a wonderful day ahead.', timestamp: '01:10' },
     ],
     actionItems: [
-      'Calendar invite dispatched to michael.chang@techscale.io for Thu 2:30 PM',
-      'Tagged contact as Enterprise Client in Jeose Services',
-      'Sent WhatsApp confirmation message with demo link',
+      'Dispatched AED 299 Website & Branding brochure via WhatsApp',
+      'Assigned new project ticket: Ahmed Al-Mansoor (Dubai)',
+      'Created Deal in Pipeline: Stage "Website Package Ordered" (AED 299)',
     ],
     costEstimate: 0.12,
     startedAt: '2026-10-10T14:15:00Z',
-    endedAt: '2026-10-10T14:17:22Z',
+    endedAt: '2026-10-10T14:17:34Z',
     createdAt: '2026-10-10T14:15:00Z',
   },
   {
     id: 'call-102',
     agentId: 'agent-marketing-2',
-    agentName: 'Ananya - Outbound Marketing & Leads Qualifier',
+    agentName: 'Maya - Outbound UAE Website Sales SDR',
     direction: 'outbound',
-    fromNumber: '+1 (650) 438-7712',
-    toNumber: '+971 50 505 3639',
-    callerName: 'Prime Care Clinic (Dr. Tariq)',
+    fromNumber: '+971 50 505 3639',
+    toNumber: '+971 55 234 8891',
+    callerName: 'Prime Smiles Clinic (Dubai)',
     status: 'completed',
-    durationSeconds: 198,
+    durationSeconds: 168,
     recordingUrl: 'https://cdn.example.com/audio/call-102.mp3',
     sentiment: 'interested',
     qualificationStatus: 'hot_lead',
-    summary: 'Outbound campaign call to extracted clinic lead. Dr. Tariq was very impressed with Jeose Services automated WhatsApp + Voice receptionist capabilities for night-time patient emergencies. Requested proposal.',
+    summary: 'Outbound sales call by Maya offering the AED 299 Website & Branding Package. Clinic manager agreed to upgrade their website and setup Google Business Profile. WhatsApp proposal sent.',
     transcript: [
-      { role: 'agent', text: 'Hello Dr. Tariq! Main Ananya baat kar rahi hoon Jeose Services se. I saw your clinic in Dubai has fantastic reviews and wanted to share how our AI receptionist handles bookings 24/7.', timestamp: '00:04' },
-      { role: 'caller', text: 'Hello Ananya. Yes, after 8 PM our clinic reception is closed. How does your AI voice handle emergency patient inquiries?', timestamp: '00:18' },
-      { role: 'agent', text: 'Hamara AI receptionist turant warm aur smooth voice mein call pick karta hai, Urdu aur English dono fluently samajhta hai, aur instant WhatsApp booking confirmation send kar deta hai.', timestamp: '00:32' },
-      { role: 'caller', text: 'Can it understand both English and Urdu accents properly?', timestamp: '00:41' },
-      { role: 'agent', text: 'Ji bilkul! It understands Urdu, Hindi and English fluently with natural human cadence and zero robotic delays. Main aapke WhatsApp par proposal send kar doon?', timestamp: '00:54' },
-      { role: 'caller', text: 'Yes please, send the proposal on this WhatsApp number.', timestamp: '01:08' },
-      { role: 'agent', text: 'Maine proposal WhatsApp par send kar diya hai. Our specialist will follow up tomorrow at 11 AM to assist with setup. Have a great evening!', timestamp: '01:24' },
+      { role: 'agent', text: 'Hello! Jeose Services se Maya baat kar rahi hoon. I saw your clinic in Dubai and wanted to share our Complete Website & Branding Package for ONLY AED 299!', timestamp: '00:03' },
+      { role: 'caller', text: 'Hello Maya. What does the AED 299 package include?', timestamp: '00:12' },
+      { role: 'agent', text: 'Isme complete responsive clinic website, free dot com domain, 1-year hosting, official doctor emails, 10-page company profile, logo design aur Google map listing sab include hai.', timestamp: '00:26' },
+      { role: 'caller', text: 'Please send the proposal on this WhatsApp number right away.', timestamp: '00:39' },
+      { role: 'agent', text: 'Maine proposal WhatsApp par send kar diya hai. Our web designer will assist you with setup tomorrow at 11 AM. Have a great day!', timestamp: '00:52' },
     ],
     actionItems: [
-      'Pushed to Deals Pipeline: Stage "Demo/Proposal Sent" ($1,200/yr)',
-      'Triggered automated WhatsApp brochure for Jeose Services',
-      'Scheduled follow-up reminder for tomorrow at 11:00 AM',
+      'Pushed to Deals Pipeline: Stage "AED 299 Package Sold"',
+      'Automated WhatsApp media brochure with website demos dispatched',
     ],
-    costEstimate: 0.16,
+    costEstimate: 0.14,
     startedAt: '2026-10-10T11:20:00Z',
-    endedAt: '2026-10-10T11:23:18Z',
+    endedAt: '2026-10-10T11:22:48Z',
     createdAt: '2026-10-10T11:20:00Z',
-  },
-  {
-    id: 'call-103',
-    agentId: 'agent-receptionist-1',
-    agentName: 'Priya - 24/7 Frontdesk AI Receptionist',
-    direction: 'inbound',
-    fromNumber: '+1 (555) 489-1120',
-    toNumber: '+1 (415) 890-3421',
-    callerName: 'Sophia Lorenza',
-    status: 'completed',
-    durationSeconds: 84,
-    recordingUrl: 'https://cdn.example.com/audio/call-103.mp3',
-    sentiment: 'neutral',
-    qualificationStatus: 'callback_requested',
-    summary: 'Caller asked for billing department regarding an invoice dispute. Receptionist collected invoice number #INV-8821 and scheduled a callback from Jeose Services accounting.',
-    transcript: [
-      { role: 'agent', text: 'Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon, your AI receptionist. How may I assist you today?', timestamp: '00:03' },
-      { role: 'caller', text: 'Hi Priya, I received invoice #8821 yesterday and have a query about the domain fee charge.', timestamp: '00:12' },
-      { role: 'agent', text: 'Ji samajh gayi Sophia! Maine invoice number INV-8821 note kar liya hai. Jeose Services ki accounts team within two business hours aapko call back karegi.', timestamp: '00:26' },
-      { role: 'caller', text: 'Thank you Priya, please reach me at this same mobile number.', timestamp: '00:32' },
-      { role: 'agent', text: 'Ji bilkul! Shukriya and have a wonderful day ahead.', timestamp: '00:38' },
-    ],
-    actionItems: [
-      'Created Support Ticket: #INV-8821 Billing Inquiry in Jeose Services',
-      'Assigned callback task to Finance Team',
-    ],
-    costEstimate: 0.08,
-    startedAt: '2026-10-09T16:04:00Z',
-    endedAt: '2026-10-09T16:05:24Z',
-    createdAt: '2026-10-09T16:04:00Z',
-  },
-  {
-    id: 'call-104',
-    agentId: 'agent-marketing-2',
-    agentName: 'Ananya - Outbound Marketing & Leads Qualifier',
-    direction: 'outbound',
-    fromNumber: '+1 (650) 438-7712',
-    toNumber: '+1 (555) 902-3341',
-    callerName: 'Downtown Legal Group',
-    status: 'completed',
-    durationSeconds: 62,
-    sentiment: 'neutral',
-    qualificationStatus: 'not_interested',
-    summary: 'Marketing lead caller engaged office manager for Jeose Services intake solution. Currently under multi-year contract. Politely marked for follow-up in Q2.',
-    transcript: [
-      { role: 'agent', text: 'Hello! Main Ananya baat kar rahi hoon Jeose Services se. How are you doing today?', timestamp: '00:03' },
-      { role: 'caller', text: 'Doing fine, what is this regarding?', timestamp: '00:07' },
-      { role: 'agent', text: 'Hum Jeose Services me automated intake receptionists provide karte hain for legal consults and client calls.', timestamp: '00:15' },
-      { role: 'caller', text: 'We just signed a two-year contract with our vendor last month so we cannot change right now.', timestamp: '00:24' },
-      { role: 'agent', text: 'Understood completely! Thank you for letting me know. I will make a note and we can reconnect down the line. Have a productive week!', timestamp: '00:35' },
-    ],
-    actionItems: [
-      'Marked as Contract Bound in Jeose Services (Review in Q2 2027)',
-    ],
-    costEstimate: 0.05,
-    startedAt: '2026-10-09T10:12:00Z',
-    endedAt: '2026-10-09T10:13:02Z',
-    createdAt: '2026-10-09T10:12:00Z',
   },
 ];
 
 export const INITIAL_CAMPAIGNS: VoiceCampaign[] = [
   {
     id: 'camp-1',
-    name: 'Q4 Healthcare & Clinics Outreach - Jeose Services',
+    name: 'UAE AED 299 Complete Website & Branding Outreach',
     agentId: 'agent-marketing-2',
-    agentName: 'Ananya - Outbound Marketing & Leads Qualifier',
+    agentName: 'Maya - Outbound UAE Website Sales SDR',
     status: 'running',
     callingWindowStart: '09:00',
     callingWindowEnd: '18:00',
@@ -313,39 +267,16 @@ export const INITIAL_CAMPAIGNS: VoiceCampaign[] = [
     totalLeads: 24,
     completedCalls: 18,
     answeredCalls: 14,
-    qualifiedLeads: 8,
+    qualifiedLeads: 11,
     leads: [
-      { id: 'lead-c1', name: 'Prime Care Dental Clinic', phone: '+971 50 505 3639', status: 'completed', qualification: 'hot_lead', category: 'Dentist', notes: 'Interested in night-time AI receptionist' },
-      { id: 'lead-c2', name: 'Prime Smiles Ortho', phone: '+971 55 234 8891', status: 'completed', qualification: 'booked_appointment', category: 'Dentist', notes: 'Demo meeting booked' },
-      { id: 'lead-c3', name: 'Elite Derma Clinic', phone: '+971 52 901 4455', status: 'completed', qualification: 'callback_requested', category: 'Healthcare', notes: 'Call back at 4 PM' },
-      { id: 'lead-c4', name: 'Bright Smile Studio', phone: '+1 (555) 304-9122', status: 'calling', category: 'Dentist' },
-      { id: 'lead-c5', name: 'Skyline Medical Group', phone: '+1 (555) 883-2009', status: 'pending', category: 'Healthcare' },
-      { id: 'lead-c6', name: 'Family Health Center', phone: '+1 (555) 441-9876', status: 'pending', category: 'Healthcare' },
+      { id: 'lead-c1', name: 'Prime Care Dental Clinic', phone: '+971 50 505 3639', status: 'completed', qualification: 'hot_lead', category: 'Healthcare', notes: 'Ordered AED 299 Website Package' },
+      { id: 'lead-c2', name: 'Prime Smiles Ortho', phone: '+971 55 234 8891', status: 'completed', qualification: 'booked_appointment', category: 'Healthcare', notes: 'Demo meeting booked' },
+      { id: 'lead-c3', name: 'Elite Derma Clinic', phone: '+971 52 901 4455', status: 'completed', qualification: 'hot_lead', category: 'Healthcare', notes: 'Requested WhatsApp brochure' },
+      { id: 'lead-c4', name: 'Bright Smile Studio', phone: '+971 54 882 1100', status: 'calling', category: 'Dentist' },
+      { id: 'lead-c5', name: 'Skyline Real Estate Group', phone: '+971 50 123 4567', status: 'pending', category: 'Real Estate' },
     ],
     createdAt: '2026-10-08T09:00:00Z',
     updatedAt: '2026-10-10T15:30:00Z',
-  },
-  {
-    id: 'camp-2',
-    name: 'Real Estate Brokers & Property VIP Follow-Up - Jeose Services',
-    agentId: 'agent-marketing-2',
-    agentName: 'Ananya - Outbound Marketing & Leads Qualifier',
-    status: 'paused',
-    callingWindowStart: '10:00',
-    callingWindowEnd: '17:00',
-    maxConcurrentCalls: 2,
-    retryAttempts: 1,
-    totalLeads: 15,
-    completedCalls: 6,
-    answeredCalls: 5,
-    qualifiedLeads: 3,
-    leads: [
-      { id: 'lead-r1', name: 'Harbor Real Estate', phone: '+971 4 332 9911', status: 'completed', qualification: 'hot_lead', category: 'Real Estate' },
-      { id: 'lead-r2', name: 'Bayview Luxury Villas', phone: '+971 50 882 1100', status: 'completed', qualification: 'callback_requested', category: 'Real Estate' },
-      { id: 'lead-r3', name: 'Emaar Partner Agency', phone: '+971 55 490 2233', status: 'pending', category: 'Real Estate' },
-    ],
-    createdAt: '2026-10-09T11:00:00Z',
-    updatedAt: '2026-10-10T12:00:00Z',
   },
 ];
 

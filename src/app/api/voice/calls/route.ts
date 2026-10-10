@@ -104,7 +104,7 @@ export async function POST(req: Request) {
       try {
         const greeting =
           initialGreeting ||
-          'Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon. Main aapki kis tarah madad kar sakti hoon?';
+          'Assalam-o-Alaikum! Jeose Services se Maya baat kar rahi hoon. Hamara Complete Business Website aur Branding Package sirf AED 299 me available hai. Kya main iski details share kar sakti hoon?';
 
         // TwiML payload to execute when client picks up phone in UAE / KSA
         const twiml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
   <Say voice="Polly.Aditi" language="hi-IN">${greeting.replace(/[<>&"]/g, '')}</Say>
   <Pause length="1"/>
   <Gather input="speech dtmf" timeout="6" action="/api/voice/webhook">
-    <Say voice="Polly.Aditi" language="hi-IN">Aap appointment schedule, pricing ya direct consultation ke baare me pooch sakte hain.</Say>
+    <Say voice="Polly.Aditi" language="hi-IN">Aap AED 299 website package, logo branding ya free consultation ke baare me pooch sakte hain.</Say>
   </Gather>
 </Response>`;
 
@@ -151,13 +151,13 @@ export async function POST(req: Request) {
     // Default conversational transcript turns
     const greetingText =
       initialGreeting ||
-      `Hello ${callerName || 'there'}! Main Priya baat kar rahi hoon Jeose Services se. I saw your business inquiry and wanted to quickly share how our AI calling helps double customer bookings.`;
+      `Assalam-o-Alaikum ${callerName || 'ji'}! Jeose Services se Maya baat kar rahi hoon. Hum UAE aur KSA businesses ke liye Complete Website & Branding Package sirf AED 299 me offer kar rahe hain. Jisme custom website, free .com domain, 1-year hosting, 10-page company profile, logo aur Google Business profile shamil hai.`;
 
     const callRecord = {
       id: twilioCallSid || `call-${Date.now()}`,
       accountId: accountId || undefined,
-      agentId: agentId || 'agent-receptionist-1',
-      agentName: agentName || 'Priya - 24/7 Frontdesk AI Receptionist (Real Indian Female Voice)',
+      agentId: agentId || 'agent-maya-website-1',
+      agentName: agentName || 'Maya - Complete Website & Branding Specialist (AED 299 Package)',
       direction,
       fromNumber: cleanFromNumber,
       toNumber: cleanToNumber,
@@ -168,7 +168,7 @@ export async function POST(req: Request) {
       qualificationStatus: 'hot_lead',
       summary: `Outbound call to ${callerName || cleanToNumber} in ${
         cleanToNumber.startsWith('+971') ? 'UAE 🇦🇪' : cleanToNumber.startsWith('+966') ? 'Saudi Arabia 🇸🇦' : 'International'
-      } from verified CRM number ${cleanFromNumber}. Client engaged with AI receptionist in bilingual Urdu/English.`,
+      } from verified CRM number ${cleanFromNumber}. Client pitched Maya's Complete Business Website & Branding Package for AED 299.`,
       transcript: [
         {
           role: 'agent',
@@ -177,30 +177,30 @@ export async function POST(req: Request) {
         },
         {
           role: 'caller',
-          text: 'Hello Priya, yes please explain your CRM services and pricing for our Dubai/Riyadh operations.',
+          text: 'Hello Maya, haan mujhe website aur branding package ki details batayein, AED 299 me kya kya shamil hai?',
           timestamp: '00:15',
         },
         {
           role: 'agent',
-          text: 'Ji bilkul! Jeose Services mein hum 24/7 AI Voice Calling, automated WhatsApp messaging aur unified lead CRM provide karte hain. Plans start at $49/month with unlimited calls.',
+          text: 'Ji zaroor! AED 299 me Custom Business Website, Free .COM Domain, 1-Year Hosting, Business Emails, 10-Page Company Profile, Logo Design, Business Card, Letterhead aur Google Business Profile verification shamil hai!',
           timestamp: '00:29',
         },
         {
           role: 'caller',
-          text: 'Send me the proposal and onboarding steps on my WhatsApp number.',
+          text: 'Yeh toh zabardast offer hai! Mujhe WhatsApp par complete package proposal aur portfolio send kar dein.',
           timestamp: '00:41',
         },
         {
           role: 'agent',
-          text: 'Shukriya ji! Maine proposal WhatsApp par send kar diya hai. Our specialist will follow up tomorrow at 11 AM. Have a wonderful day!',
+          text: 'Shukriya ji! Maine complete AED 299 package proposal aapke WhatsApp par send kar diya hai. Hamari design team jald hi aap se contact karegi. Have a great day!',
           timestamp: '00:54',
         },
       ],
       actionItems: [
-        `Qualified as Hot Lead from ${cleanToNumber}`,
+        `Qualified as Hot Lead for AED 299 Website & Branding Package (${cleanToNumber})`,
         `Caller ID verified as ${cleanFromNumber}`,
-        'Automated WhatsApp brochure dispatched',
-        'Added to Sales Pipeline: Stage "Live Contacted"',
+        'Automated WhatsApp AED 299 brochure dispatched',
+        'Added to Sales Pipeline: Stage "Live Contacted / Proposal Sent"',
       ],
       costEstimate: 0.08,
       startedAt: new Date(Date.now() - 75000).toISOString(),

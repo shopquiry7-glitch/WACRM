@@ -23,6 +23,14 @@ import {
   MessageSquare,
   Flame,
   Calendar,
+  Upload,
+  FileAudio,
+  Play,
+  Square,
+  RotateCcw,
+  Globe,
+  Copy,
+  Check,
 } from "lucide-react";
 import type { VoiceAgent, VoicePhoneNumber, VoiceCall } from "@/types/voice-calling";
 import { SUPPORTED_COUNTRIES, CountryPreset, formatE164, formatDisplayPhone } from "@/lib/voice-calling/phone-formatter";
@@ -59,12 +67,23 @@ export function LivePhoneDialerTab({
     "+1 (415) 890-3421",
   ]);
 
-  // Calling Mode & Agent Selection
+  // Calling Mode & Agent Selection (Maya - Website Package Specialist)
   const [callMode, setCallMode] = useState<"ai_agent" | "direct_agent">("ai_agent");
   const [selectedAgentId, setSelectedAgentId] = useState<string>(agents[0]?.id || "");
   const [customGreeting, setCustomGreeting] = useState(
-    "Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon. Main aapki kis tarah madad kar sakti hoon? How may I assist you today?"
+    "Hello! Jeose Services se Maya baat kar rahi hoon. Hum aapke business ke liye Complete Website & Branding Package provide kar rahe hain for ONLY AED 299! Free .COM domain, 1 year hosting aur company profile include hai. Main aapki kis tarah madad kar sakti hoon?"
   );
+
+  // Custom Real Voice Audio State ("main voice data hon wo voice use kro")
+  const [customVoiceUrl, setCustomVoiceUrl] = useState<string | null>(null);
+  const [customVoiceFileName, setCustomVoiceFileName] = useState<string | null>(null);
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Active Call State
   const [callState, setCallState] = useState<"idle" | "ringing" | "connected" | "ended">("idle");
@@ -73,11 +92,37 @@ export function LivePhoneDialerTab({
   const [isOnHold, setIsOnHold] = useState(false);
   const [inCallSpeaker, setInCallSpeaker] = useState(true);
   const [liveTranscript, setLiveTranscript] = useState<{ role: "agent" | "caller"; text: string; timestamp: string }[]>([]);
-  const [showInCallKeypad, setShowInCallKeypad] = useState(false);
-  const [lastFinishedCall, setLastFinishedCall] = useState<VoiceCall | null>(null);
+  const [copiedBrochure, setCopiedBrochure] = useState(false);
 
   const durationTimerRef = useRef<NodeJS.Timeout | null>(null);
   const ringbackRef = useRef<{ stop: () => void } | null>(null);
+
+  // Load custom voice status on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedUrl = localStorage.getItem("custom_maya_voice_url");
+      const storedName = localStorage.getItem("custom_maya_voice_name");
+      if (storedUrl) {
+        setCustomVoiceUrl(storedUrl);
+        setCustomVoiceFileName(storedName || "Real Human Voice");
+      }
+    }
+
+    // Check backend for saved custom voice
+    fetch("/api/voice/custom-audio")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.hasCustomVoice && data.url) {
+          setCustomVoiceUrl(data.url);
+          setCustomVoiceFileName("custom-maya-voice.mp3");
+          if (typeof window !== "undefined") {
+            localStorage.setItem("custom_maya_voice_url", data.url);
+            localStorage.setItem("custom_maya_voice_name", "custom-maya-voice.mp3");
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Sync phoneNumbers from props
   useEffect(() => {
@@ -130,7 +175,6 @@ export function LivePhoneDialerTab({
   const handleKeypadPress = useCallback((digit: string) => {
     playDtmfTone(digit);
     if (callState === "connected") {
-      // In-call DTMF transmission
       toast.info(`Sent DTMF tone: ${digit}`, { duration: 1000 });
       return;
     }
@@ -140,7 +184,6 @@ export function LivePhoneDialerTab({
   // Keyboard Event Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing into an input/textarea
       if (["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement)?.tagName)) {
         return;
       }
@@ -160,19 +203,147 @@ export function LivePhoneDialerTab({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeypadPress, callState]);
 
-  // Handle Country Selection
   const handleSelectCountry = (country: CountryPreset) => {
     setSelectedCountry(country);
-    // If the phone number already starts with another country code, replace it
     setPhoneNumber("");
   };
 
-  // Full formatted destination phone number
-  const fullDestinationNumber = phoneNumber.startsWith("+")
-    ? phoneNumber
-    : phoneNumber
-    ? `${selectedCountry.code} ${phoneNumber}`
-    : selectedCountry.code;
+  // Upload Custom Voice Audio File
+  const handleCustomAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const toastId = toast.loading("Uploading your real voice audio file...");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/voice/custom-audio", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setCustomVoiceUrl(data.url);
+        setCustomVoiceFileName(file.name);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("custom_maya_voice_url", data.url);
+          localStorage.setItem("custom_maya_voice_name", file.name);
+        }
+        toast.success(`Real voice recording "${file.name}" set as Maya's voice!`, { id: toastId });
+      } else {
+        toast.error(data.error || "Failed to upload audio file", { id: toastId });
+      }
+    } catch {
+      toast.error("Upload error. Please try again.", { id: toastId });
+    }
+  };
+
+  // Start Mic Voice Recording
+  const handleStartMicRecording = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast.error("Microphone access not supported in this browser");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        stream.getTracks().forEach((track) => track.stop());
+
+        const toastId = toast.loading("Saving your recorded voice as Maya's voice...");
+        try {
+          const formData = new FormData();
+          formData.append("file", audioBlob, "mic-recorded-voice.webm");
+
+          const res = await fetch("/api/voice/custom-audio", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await res.json();
+          if (res.ok && data.url) {
+            setCustomVoiceUrl(data.url);
+            setCustomVoiceFileName("Mic Recorded Real Voice");
+            if (typeof window !== "undefined") {
+              localStorage.setItem("custom_maya_voice_url", data.url);
+              localStorage.setItem("custom_maya_voice_name", "Mic Recorded Real Voice");
+            }
+            toast.success("Your microphone voice recording is now active as Maya's voice!", { id: toastId });
+          } else {
+            toast.error("Failed to save audio recording", { id: toastId });
+          }
+        } catch {
+          toast.error("Audio save error", { id: toastId });
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecordingAudio(true);
+      setRecordingSeconds(0);
+      recTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+      toast.info("Recording started! Speak into your microphone now...");
+    } catch (err) {
+      console.error(err);
+      toast.error("Microphone permission denied or not available");
+    }
+  };
+
+  // Stop Mic Voice Recording
+  const handleStopMicRecording = () => {
+    if (mediaRecorderRef.current && isRecordingAudio) {
+      mediaRecorderRef.current.stop();
+      setIsRecordingAudio(false);
+      if (recTimerRef.current) clearInterval(recTimerRef.current);
+    }
+  };
+
+  // Play Preview of Custom Real Voice
+  const handlePreviewCustomVoice = () => {
+    if (!customVoiceUrl) return;
+    setIsPlayingPreview(true);
+    const audio = new Audio(customVoiceUrl);
+    audio.play();
+    audio.onended = () => setIsPlayingPreview(false);
+    audio.onerror = () => {
+      setIsPlayingPreview(false);
+      toast.error("Could not play audio file");
+    };
+  };
+
+  // Reset Voice back to Neural
+  const handleResetToNaturalVoice = () => {
+    setCustomVoiceUrl(null);
+    setCustomVoiceFileName(null);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("custom_maya_voice_url");
+      localStorage.removeItem("custom_maya_voice_name");
+    }
+    toast.success("Reset to Natural Indian Female Voice (Urdu + English)");
+  };
+
+  // Copy WhatsApp AED 299 Brochure
+  const handleCopyBrochure = () => {
+    const text = `🌐 COMPLETE BUSINESS WEBSITE & BRANDING PACKAGE — ONLY AED 299!\n\nGive your business a professional identity and build a strong online presence with our all-in-one digital package.\n\n✨ WHAT’S INCLUDED?\n🌐 Professional Website\n- Custom Business Website Design\n- Free .COM Domain\n- 1-Year Premium Web Hosting\n- Professional Business Email Accounts\n- Mobile-Friendly & Responsive Design\n- Basic SEO Optimization\n- Professional Contact Form\n\n📄 Company Profile & Branding\n- Professional Company Profile (Up to 10 Pages)\n- Custom Logo Design\n- Professional Business Card Design\n- Custom Letterhead Design\n\n📍 Google Business Profile\n- Google Business Profile Setup & Optimization\n\n🔥 COMPLETE PACKAGE — JUST AED 299!\n📩 Contact Jeose Services today to get started!`;
+    navigator.clipboard.writeText(text);
+    setCopiedBrochure(true);
+    toast.success("AED 299 Website & Branding brochure copied to clipboard!");
+    setTimeout(() => setCopiedBrochure(false), 2500);
+  };
 
   // Save new custom Caller ID
   const handleAddCustomCallerId = () => {
@@ -204,7 +375,6 @@ export function LivePhoneDialerTab({
     const selectedAgent = agents.find((a) => a.id === selectedAgentId) || agents[0];
 
     try {
-      // Dispatch to Backend Telephony Route
       const res = await fetch("/api/voice/calls", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -213,7 +383,7 @@ export function LivePhoneDialerTab({
           fromNumber: selectedCallerId,
           callerName: contactName || `${selectedCountry.name} Client`,
           agentId: selectedAgent?.id,
-          agentName: selectedAgent?.name,
+          agentName: "Maya - 24/7 AI Receptionist & Website Specialist",
           initialGreeting: customGreeting,
           callMode,
           direction: "outbound",
@@ -222,12 +392,11 @@ export function LivePhoneDialerTab({
 
       const data = await res.json();
 
-      // Stop ringback after ringing period
       setTimeout(() => {
         ringbackRef.current?.stop();
         setCallState("connected");
 
-        // Display first agent greeting
+        // Display Maya's first greeting
         const firstTurn = {
           role: "agent" as const,
           text: customGreeting,
@@ -235,29 +404,32 @@ export function LivePhoneDialerTab({
         };
         setLiveTranscript([firstTurn]);
 
-        // Speak aloud Priya's Indian female voice in Urdu + English
+        // Speak aloud Maya's voice (plays custom uploaded real voice or neural audio)
         if (inCallSpeaker) {
           speakText(customGreeting, {
             rate: 1.0,
+            customAudioUrl: customVoiceUrl || undefined,
             onEnd: () => {
-              // Simulate client conversational reply in UAE / KSA context
+              // Simulated client response in UAE / KSA
               setTimeout(() => {
                 const clientTurn = {
                   role: "caller" as const,
-                  text: "Hello Priya! Ji haan, hum Dubai aur Riyadh me apna real estate / clinic business expand kar rahe hain. Aapke package details kya hain?",
-                  timestamp: "00:14",
+                  text: "Hello Maya! Ji haan, hum Dubai me business run karte hain. Aapke AED 299 Website & Branding Package me kya kya shamil hai?",
+                  timestamp: "00:15",
                 };
                 setLiveTranscript((prev) => [...prev, clientTurn]);
 
-                // Agent answer in Urdu + English
+                // Maya's answer with full package details
                 setTimeout(() => {
                   const agentReply = {
                     role: "agent" as const,
-                    text: "Jeose Services ke plans sirf $49 per month se start hote hain with 24/7 AI calling and WhatsApp automation. Main aapke number par WhatsApp brochure send kar rahi hoon.",
-                    timestamp: "00:26",
+                    text: "Hamare AED 299 All-In-One Package me custom professional website design, free dot com domain, 1 year premium web hosting, official business emails, 10-page company profile, logo design, business cards aur Google maps listing sab shamil hai. Maine sample designs aapke WhatsApp par send kar di hain.",
+                    timestamp: "00:30",
                   };
                   setLiveTranscript((prev) => [...prev, agentReply]);
-                  speakText(agentReply.text);
+                  speakText(agentReply.text, {
+                    customAudioUrl: customVoiceUrl || undefined,
+                  });
                 }, 1500);
               }, 2000);
             },
@@ -265,13 +437,9 @@ export function LivePhoneDialerTab({
         }
 
         if (data.live) {
-          toast.success(`Connected to ${cleanTo} via live cellular gateway! Caller ID: ${selectedCallerId}`);
+          toast.success(`Connected to ${cleanTo} via live cellular line! Caller ID: ${selectedCallerId}`);
         } else {
           toast.info(`Call session active with ${cleanTo} using Caller ID ${selectedCallerId}`);
-        }
-
-        if (data.call) {
-          setLastFinishedCall(data.call);
         }
       }, 3500);
     } catch (err) {
@@ -288,14 +456,14 @@ export function LivePhoneDialerTab({
     stopSpeaking();
     setCallState("ended");
 
-    const finalDuration = Math.max(callDuration, 18);
+    const finalDuration = Math.max(callDuration, 22);
     const cleanTo = formatE164(phoneNumber, selectedCountry.code);
     const selectedAgent = agents.find((a) => a.id === selectedAgentId) || agents[0];
 
     const completedRecord: VoiceCall = {
       id: `call-dialer-${Date.now()}`,
       agentId: selectedAgent?.id,
-      agentName: selectedAgent?.name,
+      agentName: "Maya - 24/7 AI Receptionist & Website Specialist",
       direction: "outbound",
       fromNumber: selectedCallerId,
       toNumber: cleanTo,
@@ -304,16 +472,17 @@ export function LivePhoneDialerTab({
       durationSeconds: finalDuration,
       sentiment: "positive",
       qualificationStatus: "hot_lead",
-      summary: `Live outbound dialer call to ${contactName || cleanTo} in ${selectedCountry.name}. Caller ID: ${selectedCallerId}. Client qualified for Jeose Services onboarding.`,
+      summary: `Outbound sales call by Maya to ${contactName || cleanTo} in ${selectedCountry.name}. Caller ID: ${selectedCallerId}. Client pitched on AED 299 Complete Website & Branding Package. Qualified as Hot Lead.`,
       transcript: liveTranscript.length > 0 ? liveTranscript : [
         { role: "agent", text: customGreeting, timestamp: "00:02" },
-        { role: "caller", text: "Interested in automated voice receptionist.", timestamp: "00:15" },
+        { role: "caller", text: "Interested in AED 299 Website Package.", timestamp: "00:15" },
       ],
       actionItems: [
-        `Call logged via Live Dialer (${finalDuration}s)`,
+        `Call logged via Live Phone Dialer (${finalDuration}s)`,
         `Client location: ${selectedCountry.name} (${selectedCountry.code})`,
         `Displayed Caller ID: ${selectedCallerId}`,
-        "Pushed to CRM Deals Pipeline",
+        "Pushed to Deals Pipeline: Stage 'AED 299 Website Lead'",
+        `Dispatched WhatsApp brochure to ${cleanTo}`,
       ],
       costEstimate: Number(((finalDuration / 60) * 0.04).toFixed(3)),
       startedAt: new Date(Date.now() - finalDuration * 1000).toISOString(),
@@ -321,9 +490,8 @@ export function LivePhoneDialerTab({
       createdAt: new Date().toISOString(),
     };
 
-    setLastFinishedCall(completedRecord);
     onCallCompleted(completedRecord);
-    toast.success(`Call ended (${finalDuration}s). Logged to Call History with AI summary!`);
+    toast.success(`Call ended (${finalDuration}s). Maya logged deal for AED 299 Package!`);
 
     setTimeout(() => {
       setCallState("idle");
@@ -341,29 +509,40 @@ export function LivePhoneDialerTab({
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Banner & Live Cellular Status */}
+      {/* 1. Header Banner */}
       <div className="relative overflow-hidden rounded-2xl border border-violet-500/25 bg-gradient-to-r from-violet-950/40 via-purple-900/20 to-card p-5 md:p-6 shadow-xl">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                Live Cellular &amp; PSTN Dialer
+                Maya AI Voice Agent Active
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-0.5 text-xs text-amber-300 font-bold">
+                🔥 AED 299 Website &amp; Branding Offer
               </span>
               <span className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-card/60 px-2.5 py-0.5 text-xs text-violet-300">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                Verified CRM Caller ID Active
+                Caller ID: {selectedCallerId}
               </span>
             </div>
             <h2 className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight">
               Direct Phone Dialer — UAE 🇦🇪 (+971) &amp; Saudi Arabia 🇸🇦 (+966)
             </h2>
             <p className="text-xs md:text-sm text-muted-foreground max-w-2xl">
-              Type any mobile or landline number below to place an actual phone call to your client. The client will see your verified CRM number on their phone screen.
+              Maya aapke client ko direct cellular call karegi aur hamara <strong>AED 299 Complete Website &amp; Branding Package</strong> pitch karegi. Client ke phone par aapka CRM number Caller ID show hoga.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopyBrochure}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs font-bold text-amber-300 hover:bg-amber-500/20 transition cursor-pointer"
+            >
+              {copiedBrochure ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {copiedBrochure ? "Brochure Copied!" : "Copy AED 299 Brochure"}
+            </button>
             <button
               type="button"
               onClick={onNavigateToTelephony}
@@ -380,11 +559,11 @@ export function LivePhoneDialerTab({
         {/* Left Column: Interactive Softphone Keypad (7 Cols) */}
         <div className="lg:col-span-7 space-y-5">
           <div className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-md relative overflow-hidden">
-            {/* Top: Country Quick Selector Bar */}
+            {/* Country Quick Selector Bar */}
             <div className="mb-5 space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-foreground uppercase tracking-wider">
-                  Target Country / Region
+                  Target Destination Country
                 </label>
                 <span className="text-[11px] text-muted-foreground">
                   Current: {selectedCountry.name}
@@ -410,7 +589,7 @@ export function LivePhoneDialerTab({
               </div>
             </div>
 
-            {/* Middle: Phone Display Screen */}
+            {/* Phone Display Screen */}
             <div className="rounded-2xl border border-violet-500/30 bg-muted/40 p-4 shadow-inner mb-6 space-y-1.5">
               <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                 <div className="flex items-center gap-1.5 font-medium">
@@ -451,12 +630,12 @@ export function LivePhoneDialerTab({
                 </div>
               </div>
 
-              {/* Optional Contact Name input */}
+              {/* Client / Business Name input */}
               <div className="pt-2 border-t border-border/50 flex items-center gap-2">
                 <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 <input
                   type="text"
-                  placeholder="Optional Client / Business Name (e.g. Dr. Tariq Dental)"
+                  placeholder="Client Business Name (e.g. Dr. Tariq Dental Clinic / Dubai Broker)"
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   className="w-full text-xs bg-transparent border-none text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
@@ -498,7 +677,7 @@ export function LivePhoneDialerTab({
               ))}
             </div>
 
-            {/* Bottom: Main Call / End Action Button */}
+            {/* Main Call / End Action Button */}
             <div className="flex items-center justify-center gap-4">
               {callState === "idle" ? (
                 <button
@@ -507,7 +686,7 @@ export function LivePhoneDialerTab({
                   className="w-full max-w-sm h-14 rounded-2xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold text-base shadow-lg shadow-emerald-600/30 active:scale-95 transition-all flex items-center justify-center gap-2.5 cursor-pointer"
                 >
                   <PhoneCall className="h-5 w-5 animate-pulse" />
-                  <span>Call {selectedCountry.name.split(" ")[0]} ({selectedCountry.code})</span>
+                  <span>Call with Maya ({selectedCountry.name.split(" ")[0]})</span>
                 </button>
               ) : (
                 <button
@@ -523,15 +702,152 @@ export function LivePhoneDialerTab({
           </div>
         </div>
 
-        {/* Right Column: Caller ID Config, In-Call Live Console & Quick Leads (5 Cols) */}
+        {/* Right Column: Maya's Voice, Package Card, Caller ID & Console (5 Cols) */}
         <div className="lg:col-span-5 space-y-5">
-          {/* Card 1: Caller ID (Mera Number Se Call Jaye) */}
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-3.5">
+          {/* Card 1: Maya's Real Voice Upload / Recorder ("main voice data hon wo voice use kro") */}
+          <div className="rounded-2xl border border-violet-500/30 bg-card p-5 shadow-sm space-y-3.5">
             <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <FileAudio className="h-4 w-4 text-violet-400" />
+                <h3 className="font-bold text-foreground text-sm">
+                  Maya&apos;s Voice Source (Custom Voice)
+                </h3>
+              </div>
+              {customVoiceUrl && (
+                <button
+                  type="button"
+                  onClick={handleResetToNaturalVoice}
+                  className="text-[11px] font-semibold text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer"
+                  title="Reset to natural Indian female voice"
+                >
+                  <RotateCcw className="h-3 w-3" /> Reset
+                </button>
+              )}
+            </div>
+
+            {/* Status indicator */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl border bg-muted/30 text-xs">
+              <span className="text-muted-foreground flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${customVoiceUrl ? "bg-emerald-400 animate-pulse" : "bg-sky-400"}`} />
+                Current Voice:
+              </span>
+              <span className="font-semibold text-foreground truncate max-w-[170px]">
+                {customVoiceUrl ? (customVoiceFileName || "Custom Real Voice") : "Maya (Natural Indian Female)"}
+              </span>
+            </div>
+
+            {/* Action buttons for Custom Voice */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2.5 rounded-xl border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                <span>Upload Voice (.mp3)</span>
+              </button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={handleCustomAudioUpload}
+                className="hidden"
+              />
+
+              {isRecordingAudio ? (
+                <button
+                  type="button"
+                  onClick={handleStopMicRecording}
+                  className="p-2.5 rounded-xl border border-rose-500 bg-rose-600 text-white font-bold flex items-center justify-center gap-1.5 animate-pulse cursor-pointer"
+                >
+                  <Square className="h-3.5 w-3.5" />
+                  <span>Stop ({recordingSeconds}s)</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleStartMicRecording}
+                  className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                >
+                  <Mic className="h-3.5 w-3.5 text-rose-400" />
+                  <span>Record with Mic</span>
+                </button>
+              )}
+            </div>
+
+            {/* Play Preview button if custom audio is active */}
+            {customVoiceUrl && (
+              <button
+                type="button"
+                onClick={handlePreviewCustomVoice}
+                disabled={isPlayingPreview}
+                className="w-full py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+              >
+                <Play className="h-3.5 w-3.5" />
+                <span>{isPlayingPreview ? "Playing Audio..." : "Test Uploaded Voice"}</span>
+              </button>
+            )}
+
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Aap apna real voice audio file yahan upload kar sakte hain ya mic se record kar sakte hain. Call ke waqt Maya aapki exact voice use karegi!
+            </p>
+          </div>
+
+          {/* Card 2: AED 299 Complete Website & Branding Package Details */}
+          <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-card p-5 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-border/80 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-amber-400" />
+                <h3 className="font-bold text-foreground text-sm">
+                  AED 299 Website &amp; Branding Offer
+                </h3>
+              </div>
+              <span className="font-extrabold text-amber-400 text-xs px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30">
+                AED 299
+              </span>
+            </div>
+
+            <div className="space-y-1.5 text-xs text-muted-foreground">
+              <div className="flex items-start gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <span><strong>Custom Business Website</strong> + Free .COM Domain</span>
+              </div>
+              <div className="flex items-start gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <span><strong>1-Year Premium Hosting</strong> + Official Business Emails</span>
+              </div>
+              <div className="flex items-start gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <span><strong>10-Page Company Profile</strong> + Custom Logo &amp; Letterhead</span>
+              </div>
+              <div className="flex items-start gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <span><strong>Google Business Profile</strong> Setup &amp; SEO Optimization</span>
+              </div>
+            </div>
+
+            {/* Maya Opening Message Editor */}
+            <div className="space-y-1 pt-2 border-t border-border/60">
+              <label className="text-[11px] font-semibold text-foreground">
+                Maya Opening Pitch (Urdu + English):
+              </label>
+              <textarea
+                rows={3}
+                value={customGreeting}
+                onChange={(e) => setCustomGreeting(e.target.value)}
+                className="w-full text-xs rounded-xl border border-border bg-muted/30 p-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500"
+              />
+            </div>
+          </div>
+
+          {/* Card 3: Outbound Caller ID Selector */}
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-border pb-2.5">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-emerald-400" />
                 <h3 className="font-bold text-foreground text-sm">
-                  Outbound Caller ID (Your Number)
+                  Caller ID (Your CRM Number)
                 </h3>
               </div>
               <button
@@ -543,11 +859,6 @@ export function LivePhoneDialerTab({
               </button>
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              Select which CRM number will show on the client&apos;s phone screen when they receive your call:
-            </p>
-
-            {/* Caller ID Dropdown */}
             <select
               value={selectedCallerId}
               onChange={(e) => setSelectedCallerId(e.target.value)}
@@ -555,95 +866,32 @@ export function LivePhoneDialerTab({
             >
               {allCallerIds.map((num) => (
                 <option key={num} value={num}>
-                  {num} (Verified CRM Caller ID)
+                  {num} (Verified Caller ID)
                 </option>
               ))}
             </select>
 
-            {/* Add Custom Number Form */}
             {isAddingCallerId && (
               <div className="p-3 rounded-xl border border-violet-500/30 bg-violet-500/5 space-y-2">
-                <label className="text-[11px] font-semibold text-foreground">
-                  Enter Your Business / Personal Mobile:
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="+971 50 XXXXXXX or +966 50 XXXXXXX"
-                    value={customCallerIdInput}
-                    onChange={(e) => setCustomCallerIdInput(e.target.value)}
-                    className="w-full text-xs rounded-lg border border-border bg-card p-2 text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddCustomCallerId}
-                    className="px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs shrink-0 cursor-pointer"
-                  >
-                    Verify &amp; Use
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-400 flex items-start gap-2">
-              <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>
-                Calls to UAE &amp; KSA will display <strong>{selectedCallerId}</strong> as your caller identity.
-              </span>
-            </div>
-          </div>
-
-          {/* Card 2: Voice Persona / Calling Mode */}
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-3.5">
-            <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-violet-400" />
-              Calling Mode &amp; AI Voice Persona
-            </h3>
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setCallMode("ai_agent")}
-                className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                  callMode === "ai_agent"
-                    ? "border-violet-600 bg-violet-600/10 text-foreground font-bold"
-                    : "border-border bg-card text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                <div className="font-bold text-xs">AI Voice Agent</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">Priya (Urdu + English)</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCallMode("direct_agent")}
-                className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                  callMode === "direct_agent"
-                    ? "border-violet-600 bg-violet-600/10 text-foreground font-bold"
-                    : "border-border bg-card text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                <div className="font-bold text-xs">Direct Mic Call</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">Speak via Computer Mic</div>
-              </button>
-            </div>
-
-            {callMode === "ai_agent" && (
-              <div className="space-y-1.5 pt-1">
-                <label className="text-[11px] font-semibold text-foreground">
-                  AI Receptionist Opening Greeting (Urdu + English):
-                </label>
-                <textarea
-                  rows={2}
-                  value={customGreeting}
-                  onChange={(e) => setCustomGreeting(e.target.value)}
-                  className="w-full text-xs rounded-xl border border-border bg-muted/30 p-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500"
+                <input
+                  type="text"
+                  placeholder="+971 50 XXXXXXX or +966 50 XXXXXXX"
+                  value={customCallerIdInput}
+                  onChange={(e) => setCustomCallerIdInput(e.target.value)}
+                  className="w-full text-xs rounded-lg border border-border bg-card p-2 text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500"
                 />
+                <button
+                  type="button"
+                  onClick={handleAddCustomCallerId}
+                  className="w-full py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs cursor-pointer"
+                >
+                  Verify &amp; Use Caller ID
+                </button>
               </div>
             )}
           </div>
 
-          {/* Card 3: Active Call In-Progress Console */}
+          {/* Card 4: Active Call Console */}
           {callState !== "idle" && (
             <div className="rounded-2xl border border-emerald-500/40 bg-card p-5 shadow-lg space-y-3.5 animate-fadeIn">
               <div className="flex items-center justify-between">
@@ -653,7 +901,7 @@ export function LivePhoneDialerTab({
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
                   </span>
                   <span className="font-bold text-sm text-foreground">
-                    {callState === "ringing" ? "Ringing Client..." : "Call in Progress"}
+                    {callState === "ringing" ? "Ringing UAE / KSA Client..." : "Call in Progress with Maya"}
                   </span>
                 </div>
                 <span className="font-mono font-bold text-xs text-emerald-400">
@@ -702,7 +950,7 @@ export function LivePhoneDialerTab({
                 </button>
               </div>
 
-              {/* Live Audio Waves Simulation */}
+              {/* Sound Wave Visualizer */}
               <div className="h-6 flex items-center justify-center gap-1">
                 {[4, 12, 18, 8, 22, 16, 26, 12, 6, 18, 10].map((h, i) => (
                   <div
@@ -713,13 +961,13 @@ export function LivePhoneDialerTab({
                 ))}
               </div>
 
-              {/* Live Transcript Turns */}
+              {/* Live Transcript Stream */}
               {liveTranscript.length > 0 && (
-                <div className="max-h-32 overflow-y-auto space-y-2 p-2.5 rounded-xl bg-muted/30 text-xs">
+                <div className="max-h-36 overflow-y-auto space-y-2 p-2.5 rounded-xl bg-muted/30 text-xs">
                   {liveTranscript.map((turn, idx) => (
                     <div key={idx} className="space-y-0.5">
                       <span className="font-bold text-[10px] uppercase text-violet-400">
-                        {turn.role === "agent" ? "Priya (AI)" : "Client"} [{turn.timestamp}]
+                        {turn.role === "agent" ? "Maya (AI)" : "Client"} [{turn.timestamp}]
                       </span>
                       <p className="text-foreground leading-snug">{turn.text}</p>
                     </div>
@@ -729,7 +977,7 @@ export function LivePhoneDialerTab({
             </div>
           )}
 
-          {/* Card 4: Quick Dial Leads (UAE / KSA) */}
+          {/* Card 5: Quick Dial Leads */}
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-3">
             <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
               <Phone className="h-4 w-4 text-sky-400" />

@@ -539,6 +539,13 @@ export function InboundReceptionistTab({
                 </span>
                 <button
                   type="button"
+                  onClick={() => handleSendMessage("Mujhe aapka AED 299 wala Complete Website aur Branding Package chahiye. Isme kya kya shamil hai?")}
+                  className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-300 hover:bg-amber-500/20 transition cursor-pointer"
+                >
+                  🔥 AED 299 Website Package
+                </button>
+                <button
+                  type="button"
                   onClick={() => handleSendMessage("Hi, I want to book an appointment tomorrow at 11 AM.")}
                   className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] hover:border-violet-500 hover:text-violet-400 transition cursor-pointer"
                 >
@@ -598,8 +605,8 @@ export function InboundReceptionistTab({
                     isCalling
                       ? isListening
                         ? "Listening to your voice... Speak now!"
-                        : "Type or use mic to talk to Priya..."
-                      : "Start the call above to speak with Priya"
+                        : "Type or use mic to talk to Maya..."
+                      : "Start the call above to speak with Maya"
                   }
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}

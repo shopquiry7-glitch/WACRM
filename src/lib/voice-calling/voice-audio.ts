@@ -1,7 +1,7 @@
-// Voice audio playback and speech synthesis helper tuned for Natural Indian Female Receptionist (Priya / Neerja)
-// Provides studio-grade real audio streaming (Urdu + English) with graceful SpeechSynthesis fallback.
+// Voice audio playback and speech synthesis helper tuned for Maya (Natural Indian Female Voice)
+// Supports custom user real audio playback, high-fidelity neural streaming (Urdu + English),
+// and Maya's AED 299 Complete Business Website & Branding Package conversation engine.
 
-// Active audio reference for cancelling / interrupting
 let currentAudio: HTMLAudioElement | null = null;
 let cachedVoices: SpeechSynthesisVoice[] = [];
 
@@ -14,8 +14,6 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
 
 /**
  * Finds the most natural, human-sounding Indian female voice available on the client device.
- * Prioritizes Microsoft Neerja (Natural India), Microsoft Swara (Hindi Natural),
- * Google English (India), Veena, Kaveri, or falls back to a gentle female voice tuned with Indian receptionist cadence.
  */
 export function getIndianFemaleVoice(): SpeechSynthesisVoice | null {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
@@ -23,27 +21,23 @@ export function getIndianFemaleVoice(): SpeechSynthesisVoice | null {
   const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
   if (!voices || voices.length === 0) return null;
 
-  // 1. Premium Natural Indian Female Voices (Edge / Windows 11 / Chrome / Mac)
-  const indianFemaleNames = [
-    'neerja', // Microsoft Neerja Online (Natural) - English (India)
-    'swara',  // Microsoft Swara Online (Natural) - Hindi (India)
-    'heera',  // Microsoft Heera - English (India)
-    'veena',  // Apple Veena (India)
-    'kaveri', // Kaveri (India)
-    'lekha',  // Lekha (Hindi)
+  const targetNames = [
+    'maya',
+    'neerja',
+    'swara',
+    'heera',
+    'veena',
+    'kaveri',
     'priya',
     'geeta',
     'sunita',
   ];
 
-  for (const targetName of indianFemaleNames) {
-    const matched = voices.find(
-      (v) => v.name.toLowerCase().includes(targetName)
-    );
+  for (const targetName of targetNames) {
+    const matched = voices.find((v) => v.name.toLowerCase().includes(targetName));
     if (matched) return matched;
   }
 
-  // 2. Any voice tagged with en-IN or hi-IN containing "female" or "natural"
   const enInFemale = voices.find(
     (v) =>
       (v.lang === 'en-IN' || v.lang === 'hi-IN' || v.lang === 'en_IN' || v.lang === 'ur-PK' || v.lang === 'ur') &&
@@ -53,11 +47,9 @@ export function getIndianFemaleVoice(): SpeechSynthesisVoice | null {
   );
   if (enInFemale) return enInFemale;
 
-  // 3. Any Indian regional voice
   const anyIndian = voices.find((v) => v.lang.includes('IN') || v.name.includes('India'));
   if (anyIndian) return anyIndian;
 
-  // 4. Natural warm female fallback (tuned to sound polite & human)
   const warmFemale =
     voices.find((v) => v.name.includes('Natural') && (v.name.includes('Jenny') || v.name.includes('Aria') || v.name.includes('Female'))) ||
     voices.find((v) => v.name.includes('Google UK English Female') || v.name.includes('Samantha')) ||
@@ -95,6 +87,7 @@ function fallbackSpeechSynthesis(
       const isNativeIndian =
         indianVoice.lang.includes('IN') ||
         indianVoice.name.toLowerCase().includes('neerja') ||
+        indianVoice.name.toLowerCase().includes('maya') ||
         indianVoice.name.toLowerCase().includes('heera');
       utterance.pitch = options?.pitch ?? (isNativeIndian ? 1.05 : 1.1);
       utterance.rate = options?.rate ?? 0.98;
@@ -123,9 +116,9 @@ function fallbackSpeechSynthesis(
 }
 
 /**
- * High-quality speech player.
- * Uses real, smooth, crystal-clear Indian female audio stream (Urdu + English) via /api/voice/tts.
- * Automatically falls back to local synthesis if offline.
+ * High-quality speech player for Maya.
+ * If user uploaded a custom real voice audio file, it plays that exact audio.
+ * Otherwise streams natural Indian female voice audio via /api/voice/tts.
  */
 export function speakText(
   text: string,
@@ -133,6 +126,7 @@ export function speakText(
     rate?: number;
     pitch?: number;
     lang?: string;
+    customAudioUrl?: string;
     onStart?: () => void;
     onEnd?: () => void;
     onError?: (err: unknown) => void;
@@ -143,7 +137,6 @@ export function speakText(
     return { cancel: () => {} };
   }
 
-  // Stop any previous playing audio or synthesis
   stopSpeaking();
 
   const trimmedText = text.trim();
@@ -155,12 +148,18 @@ export function speakText(
   let isCancelled = false;
 
   try {
-    // Stream real, clear human audio from /api/voice/tts
-    const url = `/api/voice/tts?text=${encodeURIComponent(trimmedText)}${
-      options?.lang ? `&lang=${encodeURIComponent(options.lang)}` : ''
-    }`;
+    // Check if custom real audio exists
+    const customStoredUrl =
+      options?.customAudioUrl ||
+      (typeof window !== 'undefined' ? localStorage.getItem('custom_maya_voice_url') : null);
 
-    const audio = new Audio(url);
+    const audioUrl = customStoredUrl
+      ? customStoredUrl
+      : `/api/voice/tts?text=${encodeURIComponent(trimmedText)}${
+          options?.lang ? `&lang=${encodeURIComponent(options.lang)}` : ''
+        }`;
+
+    const audio = new Audio(audioUrl);
     currentAudio = audio;
 
     let hasEnded = false;
@@ -272,7 +271,7 @@ export function startMicRecognition(
     const recognition = new SpeechRecognitionClass();
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = 'en-IN'; // Optimized for Indian English & Hindi/Urdu accent
+    recognition.lang = 'en-IN';
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
@@ -310,7 +309,10 @@ export function startMicRecognition(
   }
 }
 
-// Generate natural, polite Indian receptionist conversational responses in bilingual Urdu + English
+/**
+ * Generate Maya's natural, persuasive conversational responses in bilingual Urdu + English
+ * specifically pitching the COMPLETE BUSINESS WEBSITE & BRANDING PACKAGE FOR ONLY AED 299!
+ */
 export async function generateSimulatedAgentResponse(
   userQuery: string,
   _agentName: string,
@@ -322,7 +324,48 @@ export async function generateSimulatedAgentResponse(
 }> {
   const query = userQuery.toLowerCase().trim();
 
-  // 1. Appointments & Meetings
+  // 1. Inquiries about the AED 299 Website & Branding Package / Pricing / Cost
+  if (
+    query.includes('website') ||
+    query.includes('package') ||
+    query.includes('price') ||
+    query.includes('cost') ||
+    query.includes('299') ||
+    query.includes('kitna') ||
+    query.includes('karcha') ||
+    query.includes('offer') ||
+    query.includes('domain') ||
+    query.includes('hosting') ||
+    query.includes('logo') ||
+    query.includes('branding') ||
+    query.includes('profile')
+  ) {
+    return {
+      text: `Ji bilkul! Hamara Complete Business Website & Branding Package sirf AED 299 ka hai! Isme custom professional website, free .COM domain, 1-year premium web hosting, official business emails, 10-page company profile, custom logo design, business card design aur Google Business Profile setup sab shamil hai. Kya main aapke WhatsApp par live demo link aur sample design bhej doon?`,
+      action: 'Pitch delivered: AED 299 Complete Website & Branding Package',
+      qualification: 'hot_lead',
+    };
+  }
+
+  // 2. WhatsApp Brochure / Sample Demos
+  if (
+    query.includes('whatsapp') ||
+    query.includes('send') ||
+    query.includes('bhej') ||
+    query.includes('brochure') ||
+    query.includes('details') ||
+    query.includes('sample') ||
+    query.includes('link') ||
+    query.includes('demo')
+  ) {
+    return {
+      text: `Done! Maine complete AED 299 Website & Branding Package brochure aur sample portfolio aapke WhatsApp number par bhej di hai. Hamare senior web designer 15 minutes mein aapko connect karenge to start your project. Have a wonderful day!`,
+      action: 'Sent AED 299 Website Brochure via WhatsApp',
+      qualification: 'hot_lead',
+    };
+  }
+
+  // 3. Appointments, Meetings & Design Consultations
   if (
     query.includes('book') ||
     query.includes('appointment') ||
@@ -331,39 +374,22 @@ export async function generateSimulatedAgentResponse(
     query.includes('meeting') ||
     query.includes('milna') ||
     query.includes('waqt') ||
-    query.includes('visit')
+    query.includes('kal') ||
+    query.includes('time')
   ) {
     return {
-      text: `Ji bilkul! Jeose Services ke behalf par main aapki appointment book kar sakti hoon. Kal morning 11:00 AM ya afternoon 3:30 PM ka slot available hai. Which time suits you best?`,
-      action: 'Offered slots: Tomorrow 11:00 AM / 3:30 PM',
+      text: `Ji bilkul! Maya aapki onboarding appointment confirm kar sakti hai. Hamare paas kal subah 11:00 AM ya afternoon 3:00 PM ka slot available hai to discuss your website design. Which time suits you best?`,
+      action: 'Slot offered: Tomorrow 11:00 AM / 3:00 PM',
       qualification: 'booked_appointment',
     };
   }
 
-  // 2. Pricing & Cost
-  if (
-    query.includes('price') ||
-    query.includes('cost') ||
-    query.includes('package') ||
-    query.includes('fee') ||
-    query.includes('rate') ||
-    query.includes('kitna') ||
-    query.includes('karcha') ||
-    query.includes('charge') ||
-    query.includes('pricing')
-  ) {
-    return {
-      text: `Jeose Services ke plans sirf $49 per month se start hote hain. Isme 24/7 AI Voice Calling, WhatsApp CRM automation aur unlimited customer calls include hain. Shall I send complete package details on your WhatsApp?`,
-      action: 'Quoted: $49/mo Starter Plan for Jeose Services',
-      qualification: 'hot_lead',
-    };
-  }
-
-  // 3. Human Manager / Escalation / Consultant
+  // 4. Human Specialist / Manager / Developer
   if (
     query.includes('human') ||
     query.includes('manager') ||
-    query.includes('doctor') ||
+    query.includes('developer') ||
+    query.includes('designer') ||
     query.includes('transfer') ||
     query.includes('agent') ||
     query.includes('insan') ||
@@ -371,25 +397,9 @@ export async function generateSimulatedAgentResponse(
     query.includes('senior')
   ) {
     return {
-      text: `Ji theek hai, main turant aapki call Jeose Services ke senior consultant ko transfer kar rahi hoon. Kripya do second line par bane rahiye. Connecting you right now.`,
-      action: 'Call transferred to Jeose Services senior consultant',
+      text: `Ji theek hai, main turant aapki call Jeose Services ke senior web designer aur project manager ko transfer kar rahi hoon. Please hold for two seconds while I connect you.`,
+      action: 'Call transferred to Senior Web Designer',
       qualification: 'callback_requested',
-    };
-  }
-
-  // 4. Emergency / Urgent
-  if (
-    query.includes('urgent') ||
-    query.includes('emergency') ||
-    query.includes('pain') ||
-    query.includes('dard') ||
-    query.includes('jaldi') ||
-    query.includes('help')
-  ) {
-    return {
-      text: `Main samajh sakti hoon! Yeh urgent matter hai. Main Jeose Services ki on-duty support team ko turant alert bhej rahi hoon. Our team will contact you right away.`,
-      action: 'Urgent emergency escalation triggered for Jeose Services',
-      qualification: 'hot_lead',
     };
   }
 
@@ -404,8 +414,8 @@ export async function generateSimulatedAgentResponse(
     query.includes('kya hal')
   ) {
     return {
-      text: `Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon. Main aapki kis tarah madad kar sakti hoon? How may I assist you today?`,
-      action: 'Greeting acknowledged in bilingual Urdu & English',
+      text: `Hello! Jeose Services se Maya baat kar rahi hoon. Hum UAE aur KSA businesses ke liye Complete Website & Branding Package provide kar rahe hain for ONLY AED 299! Professional website, free .COM domain, 1-year hosting, 10-page company profile aur Google profile sab include hai. Main aapki kis tarah madad kar sakti hoon?`,
+      action: 'Maya introduced AED 299 Website & Branding Package',
       qualification: 'hot_lead',
     };
   }
@@ -420,16 +430,16 @@ export async function generateSimulatedAgentResponse(
     query.includes('no')
   ) {
     return {
-      text: `Koi baat nahi ji! Jeose Services ko apna time dene ke liye shukriya. Main aapke WhatsApp par ek summary bhej deti hoon so you can review whenever convenient. Have a wonderful day!`,
+      text: `Koi baat nahi ji! Jeose Services ko apna waqt dene ke liye shukriya. Main aapke WhatsApp par ek summary bhej deti hoon taaki aap free time me hamara AED 299 package dekh sakein. Have a great day!`,
       action: 'Sent WhatsApp brochure fallback',
       qualification: 'not_interested',
     };
   }
 
-  // 7. General Inquiry Response (Polite Indian Receptionist in Urdu + English)
+  // 7. General Questions / Features
   return {
-    text: `Ji bilkul! Jeose Services mein ham aapko AI Voice Calling, WhatsApp CRM automation aur automated lead solutions provide karte hain. Would you like to know more about our features or schedule a live demo?`,
-    action: 'Inquiry processed & contact logged for Jeose Services',
+    text: `Ji bilkul! Jeose Services mein hum aapke business ko professional online identity dete hain with custom website, logo, company profile aur Google maps setup for just AED 299. Would you like to get started today?`,
+    action: 'AED 299 Website consultation active',
     qualification: 'hot_lead',
   };
 }

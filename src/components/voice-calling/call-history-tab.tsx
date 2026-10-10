@@ -65,7 +65,7 @@ export function CallHistoryTab({ calls }: CallHistoryTabProps) {
         onEnd: () => setPlayingCallId(null),
         onError: () => setPlayingCallId(null),
       });
-      toast.info(`Playing call recording with Priya's smooth Indian female voice (Urdu + English)...`);
+      toast.info(`Playing call recording with Maya's smooth Indian female voice (Urdu + English)...`);
     }
   };
 
@@ -74,7 +74,7 @@ export function CallHistoryTab({ calls }: CallHistoryTabProps) {
       `CALL TRANSCRIPT - JEOSE SERVICES AI CALLING`,
       `Date: ${new Date(call.startedAt).toLocaleString()}`,
       `Contact: ${call.callerName || "Unknown"} (${call.direction === "inbound" ? call.fromNumber : call.toNumber})`,
-      `Agent: ${call.agentName || "Priya Receptionist"}`,
+      `Agent: ${call.agentName || "Maya Specialist"}`,
       `Duration: ${formatDuration(call.durationSeconds)}`,
       `Outcome: ${call.qualificationStatus}`,
       `Summary: ${call.summary || ""}`,
@@ -364,7 +364,7 @@ export function CallHistoryTab({ calls }: CallHistoryTabProps) {
                   type="button"
                   onClick={() => togglePlayAudio(selectedCall)}
                   className="inline-flex items-center gap-1 rounded-lg border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-xs font-semibold text-violet-300 hover:bg-violet-500/20 transition cursor-pointer"
-                  title="Play audio excerpt with Priya's Indian voice"
+                  title="Play audio excerpt with Maya's Indian voice"
                 >
                   <Volume2 className="h-3.5 w-3.5" />
                   {playingCallId === selectedCall.id ? "Stop Voice" : "Listen to Voice"}

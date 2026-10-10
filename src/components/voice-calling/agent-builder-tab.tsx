@@ -28,15 +28,17 @@ interface AgentBuilderTabProps {
 
 const INDUSTRY_TEMPLATES = [
   {
-    name: "Jeose Healthcare & Clinic Receptionist",
+    name: "Maya - AED 299 Complete Website & Branding Specialist",
     type: "receptionist" as AgentType,
-    firstMessage: "Hello! Thank you for calling Jeose Clinic & Services. Main Priya baat kar rahi hoon, how may I assist you with appointments or inquiries today?",
-    systemPrompt: `You are Priya, a polite Indian female AI receptionist for Jeose Services.
-1. Welcome callers warmly in natural Urdu and English (bilingual).
-2. Ask whether they need routine checkup, appointment booking, or service consultation.
-3. Offer slots: tomorrow morning at 11:00 AM or afternoon at 3:30 PM.
-4. Collect patient name and contact phone number.
-5. Keep answers concise, warm, empathetic, and professional in natural, smooth speech.`,
+    firstMessage: "Hello! Jeose Services se Maya baat kar rahi hoon. Hum UAE aur KSA businesses ke liye Complete Website & Branding Package provide kar rahe hain for ONLY AED 299! Free .COM domain, 1 year hosting aur company profile include hai. Main aapki kis tarah madad kar sakti hoon?",
+    systemPrompt: `You are Maya, a courteous, warm, and highly persuasive Indian female AI Voice Agent for Jeose Services.
+Offer the Complete Business Website & Branding Package for ONLY AED 299:
+- Custom Business Website Design
+- Free .COM Domain + 1-Year Premium Web Hosting
+- Professional Business Email Accounts
+- 10-Page Company Profile + Custom Logo Design + Business Cards + Letterhead
+- Google Business Profile Setup & Optimization
+- Price: JUST AED 299!`,
   },
   {
     name: "B2B SaaS Outbound Marketing SDR",
@@ -158,12 +160,12 @@ export function AgentBuilderTab({
       voiceName: VOICE_PERSONAS[0].name,
       language: "en-IN",
       llmModel: "gpt-4o-mini",
-      firstMessage: "Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon. Main aapki kis tarah madad kar sakti hoon? How may I assist you today?",
-      systemPrompt: "You are Priya, a warm, courteous Indian AI receptionist for Jeose Services. You speak fluent Urdu and English.",
+      firstMessage: "Hello! Jeose Services se Maya baat kar rahi hoon. Hum UAE aur KSA businesses ke liye Complete Website & Branding Package provide kar rahe hain for ONLY AED 299! Free .COM domain, 1 year hosting aur company profile include hai. Main aapki kis tarah madad kar sakti hoon?",
+      systemPrompt: "You are Maya, an energetic and polite Indian female AI voice agent for Jeose Services pitching the AED 299 Complete Website & Branding Package.",
       temperature: 0.65,
       silenceTimeoutSeconds: 15,
       interruptionHandling: true,
-      transferPhoneNumber: "+1 (555) 019-2831",
+      transferPhoneNumber: "+971 50 505 3639",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

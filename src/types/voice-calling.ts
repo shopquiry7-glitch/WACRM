@@ -1,6 +1,6 @@
 export type AgentType = 'receptionist' | 'outbound_marketing' | 'lead_qualifier' | 'support';
 export type AgentStatus = 'active' | 'inactive' | 'archived';
-export type VoiceProvider = 'elevenlabs' | 'openai' | 'cartesia' | 'deepgram';
+export type VoiceProvider = 'elevenlabs' | 'openai' | 'cartesia' | 'deepgram' | 'custom';
 export type TelephonyProvider = 'twilio' | 'vapi' | 'retell' | 'bland';
 
 export interface VoiceAgent {
