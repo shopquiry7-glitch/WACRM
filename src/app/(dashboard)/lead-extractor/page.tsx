@@ -46,13 +46,13 @@ interface ExtractedLead {
 const DEFAULT_LEADS: ExtractedLead[] = [
   {
     id: "lead-1",
-    name: "Apex Dental & Implant Care",
+    name: "Prime Dental & Implant Care",
     phone: "+971505053639",
     category: "Dentist",
     address: "Business Bay, Tower 1, Dubai, UAE",
     rating: 4.9,
     reviews: 184,
-    website: "https://apexdentalcare.ae",
+    website: "https://primedentalcare.ae",
     verifiedWhatsApp: true,
   },
   {

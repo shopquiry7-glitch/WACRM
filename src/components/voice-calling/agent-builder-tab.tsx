@@ -28,14 +28,15 @@ interface AgentBuilderTabProps {
 
 const INDUSTRY_TEMPLATES = [
   {
-    name: "Dental & Medical Clinic Receptionist",
+    name: "Jeose Healthcare & Clinic Receptionist",
     type: "receptionist" as AgentType,
-    firstMessage: "Thank you for calling Apex Dental & Wellness Clinic. This is Maya, how may I assist you with booking or inquiries today?",
-    systemPrompt: `You are Maya, an AI patient coordinator for Apex Dental Clinic.
-1. Welcome patients warmly, ask whether they need routine cleaning, emergency pain checkup, or consultation.
-2. Ask for their preferred day and morning/afternoon timing.
-3. Collect patient name and insurance provider.
-4. Keep answers concise, empathetic, and professional.`,
+    firstMessage: "Hello! Thank you for calling Jeose Clinic & Services. Main Priya baat kar rahi hoon, how may I assist you with appointments or inquiries today?",
+    systemPrompt: `You are Priya, a polite Indian female AI receptionist for Jeose Services.
+1. Welcome callers warmly in natural Urdu and English (bilingual).
+2. Ask whether they need routine checkup, appointment booking, or service consultation.
+3. Offer slots: tomorrow morning at 11:00 AM or afternoon at 3:30 PM.
+4. Collect patient name and contact phone number.
+5. Keep answers concise, warm, empathetic, and professional in natural, smooth speech.`,
   },
   {
     name: "B2B SaaS Outbound Marketing SDR",
@@ -157,8 +158,8 @@ export function AgentBuilderTab({
       voiceName: VOICE_PERSONAS[0].name,
       language: "en-IN",
       llmModel: "gpt-4o-mini",
-      firstMessage: "Namaste! Main Priya baat kar rahi hoon. Aapki kis tarah madad kar sakti hoon? How may I assist you today?",
-      systemPrompt: "You are a warm, courteous Indian AI receptionist.",
+      firstMessage: "Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon. Main aapki kis tarah madad kar sakti hoon? How may I assist you today?",
+      systemPrompt: "You are Priya, a warm, courteous Indian AI receptionist for Jeose Services. You speak fluent Urdu and English.",
       temperature: 0.65,
       silenceTimeoutSeconds: 15,
       interruptionHandling: true,

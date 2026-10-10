@@ -25,9 +25,9 @@ export async function POST(req: Request) {
     if (isTwilio) {
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna-Neural">Thank you for calling Apex Business Services. Connecting you to our AI Voice Receptionist.</Say>
+  <Say voice="Polly.Aditi">Hello! Thank you for calling Jeose Services. Main Priya baat kar rahi hoon, connecting you to our AI Voice Receptionist.</Say>
   <Pause length="1"/>
-  <Say voice="Polly.Joanna-Neural">Hello! How may I assist you today?</Say>
+  <Say voice="Polly.Aditi">Jeose Services mein aapka welcome hai. How may I assist you today?</Say>
 </Response>`;
 
       return new Response(twiml, {

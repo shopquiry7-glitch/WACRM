@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
     const cfg = LOCATION_CONFIG[cKey] || LOCATION_CONFIG["us"];
 
     const prefixes = [
-      "Apex", "Prime", "Elite", "Royal", "Global", "Metro", "Crestview", "Summit",
+      "Jeose Partner", "Prime", "Elite", "Royal", "Global", "Metro", "Crestview", "Summit",
       "Sterling", "Paramount", "Vanguard", "Signature", "Heritage", "Pinnacle", "Nexus"
     ];
 

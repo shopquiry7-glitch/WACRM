@@ -48,12 +48,12 @@ export function MarketingCampaignsTab({
   const [callingWindow, setCallingWindow] = useState("09:00 - 18:00");
   const [leadSourceType, setLeadSourceType] = useState<"crm" | "extractor" | "manual">("extractor");
   const [manualLeadsText, setManualLeadsText] = useState(
-    "Apex Dental Care, +971505053639, Dentist\nPrime Smiles Ortho, +971552348891, Dentist\nElite Derma Clinic, +971529014455, Healthcare"
+    "Prime Care Dental, +971505053639, Dentist\nPrime Smiles Ortho, +971552348891, Dentist\nElite Derma Clinic, +971529014455, Healthcare"
   );
 
   // Quick Dial Form State
   const [quickPhone, setQuickPhone] = useState("+971 50 505 3639");
-  const [quickName, setQuickName] = useState("Dr. Tariq (Apex Dental)");
+  const [quickName, setQuickName] = useState("Dr. Tariq (Prime Care Clinic)");
   const [isDialing, setIsDialing] = useState(false);
 
   // Toggle Campaign status
@@ -83,7 +83,7 @@ export function MarketingCampaignsTab({
     let parsedLeads: CampaignLead[] = [];
     if (leadSourceType === "extractor") {
       parsedLeads = [
-        { id: `lead-ex-${Date.now()}-1`, name: "Apex Dental Care", phone: "+971505053639", category: "Dentist", status: "pending" },
+        { id: `lead-ex-${Date.now()}-1`, name: "Prime Care Dental Clinic", phone: "+971505053639", category: "Dentist", status: "pending" },
         { id: `lead-ex-${Date.now()}-2`, name: "Prime Smiles Ortho", phone: "+971552348891", category: "Dentist", status: "pending" },
         { id: `lead-ex-${Date.now()}-3`, name: "Elite Derma Clinic", phone: "+971529014455", category: "Healthcare", status: "pending" },
         { id: `lead-ex-${Date.now()}-4`, name: "Bright Smile Studio", phone: "+15553049122", category: "Dentist", status: "pending" },
@@ -147,7 +147,7 @@ export function MarketingCampaignsTab({
 
     // Speak Indian female voice pitch aloud
     speakText(
-      `Namaste ${leadName}! Main Ananya baat kar rahi hoon Jeose CRM se. We help businesses double bookings with 24/7 AI calling.`,
+      `Hello ${leadName}! Main Ananya baat kar rahi hoon Jeose Services se. We help businesses double customer bookings with 24/7 AI calling.`,
       { rate: 1.0 }
     );
 
@@ -217,7 +217,7 @@ export function MarketingCampaignsTab({
 
     // Speak Indian female voice greeting aloud
     speakText(
-      `Hello! Main Ananya baat kar rahi hoon Jeose CRM se. Calling ${quickName || quickPhone} right now. Connecting AI dialer.`,
+      `Hello! Main Ananya baat kar rahi hoon Jeose Services se. Calling ${quickName || quickPhone} right now. Connecting AI dialer.`,
       { rate: 1.0 }
     );
 
@@ -231,7 +231,7 @@ export function MarketingCampaignsTab({
           agentId: targetAgent.id,
           agentName: targetAgent.name,
           direction: "outbound",
-          initialGreeting: `Hello ${quickName}! Main Ananya baat kar rahi hoon Jeose CRM se. I saw your business inquiry and wanted to quickly share how our AI calling helps double your bookings.`,
+          initialGreeting: `Hello ${quickName}! Main Ananya baat kar rahi hoon Jeose Services se. I saw your business inquiry and wanted to quickly share how our AI calling helps double your bookings.`,
         }),
       });
 

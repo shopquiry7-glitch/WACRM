@@ -9,30 +9,30 @@ import type {
 export const VOICE_PERSONAS = [
   {
     id: 'priya-indian-natural',
-    name: 'Priya (Natural Indian Female - Warm & Courteous)',
+    name: 'Priya (Real Indian Female - Clear & Smooth)',
     provider: 'elevenlabs' as const,
     gender: 'Female',
-    accent: 'Indian (Neutral English / Hindi / Urdu)',
-    description: 'Ultra-natural human female voice with polite Indian cadence. Zero robotic tone.',
-    sampleAudioText: 'Namaste! Thank you for calling Apex Business Services. Main Priya bol rahi hoon, aapki kya madad kar sakti hoon?',
+    accent: 'Indian (Urdu + English Bilingual)',
+    description: 'Clear, smooth, and natural Indian female voice speaking fluent Urdu and English. Zero robotic tone.',
+    sampleAudioText: 'Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon. Main aapki kis tarah madad kar sakti hoon? How may I assist you today?',
   },
   {
     id: 'neerja-indian-natural',
     name: 'Neerja (Professional Indian Executive)',
     provider: 'elevenlabs' as const,
     gender: 'Female',
-    accent: 'Indian English',
+    accent: 'Indian English & Urdu',
     description: 'Crisp, articulate corporate Indian receptionist tone, ideal for B2B sales & hot leads.',
-    sampleAudioText: 'Hello! This is Neerja calling from Jeose CRM. How may I assist your business growth today?',
+    sampleAudioText: 'Hello! Main Neerja baat kar rahi hoon Jeose Services se. How may I assist your business growth today?',
   },
   {
     id: 'swara-indian-hindi',
-    name: 'Swara (Fluent Hindi & Urdu Speaker)',
+    name: 'Swara (Warm Urdu & Hindi Speaker)',
     provider: 'elevenlabs' as const,
     gender: 'Female',
-    accent: 'Hindi / Urdu / English',
+    accent: 'Urdu / Hindi / English',
     description: 'Gentle, soothing Indian tone for clinics, salons, and customer reception.',
-    sampleAudioText: 'Namaste aur Assalam-o-Alaikum! Hamare clinic me aapka swagat hai. Main aapki booking confirm kar sakti hoon.',
+    sampleAudioText: 'Assalam-o-Alaikum aur Hello! Jeose Services mein aapka welcome hai. Main aapki booking confirm kar sakti hoon.',
   },
   {
     id: '21m00Tcm4TlvDq8ikWAM',
@@ -41,7 +41,7 @@ export const VOICE_PERSONAS = [
     gender: 'Female',
     accent: 'American (Neutral)',
     description: 'Natural international voice for overseas global clients',
-    sampleAudioText: 'Thank you for calling! I would be delighted to help you schedule an appointment.',
+    sampleAudioText: 'Thank you for calling Jeose Services! I would be delighted to help you schedule an appointment.',
   },
   {
     id: 'EXAVITQu4vr4xnSDxMaL',
@@ -50,29 +50,30 @@ export const VOICE_PERSONAS = [
     gender: 'Female',
     accent: 'British',
     description: 'Sophisticated tone for luxury sales and VIP concierge',
-    sampleAudioText: 'Good afternoon. Welcome to Prime Properties. May I assist you with your investment search?',
+    sampleAudioText: 'Good afternoon. Welcome to Jeose Services. May I assist you with your consultation inquiry?',
   },
 ];
 
 export const INITIAL_VOICE_AGENTS: VoiceAgent[] = [
   {
     id: 'agent-receptionist-1',
-    name: 'Priya - 24/7 Frontdesk AI Receptionist (Indian Female Voice)',
+    name: 'Priya - 24/7 Frontdesk AI Receptionist (Real Indian Female Voice)',
     type: 'receptionist',
     status: 'active',
     voiceProvider: 'elevenlabs',
     voiceId: 'priya-indian-natural',
-    voiceName: 'Priya (Natural Indian Female)',
+    voiceName: 'Priya (Real Indian Female - Clear & Smooth)',
     language: 'en-IN',
     llmModel: 'gpt-4o-mini',
-    firstMessage: 'Namaste! Thank you for calling Apex Business Services. My name is Priya, your receptionist. Aapki kis tarah madad kar sakti hoon? How may I assist you today?',
-    systemPrompt: `You are Priya, a courteous, warm, and highly professional Indian female AI Frontdesk Receptionist for Apex Business Services.
+    firstMessage: 'Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon. Main aapki kis tarah madad kar sakti hoon? How may I assist you today?',
+    systemPrompt: `You are Priya, a courteous, warm, and highly professional Indian female AI Frontdesk Receptionist for Jeose Services.
 Your persona & mannerisms:
-1. Speak in a polite, respectful, and natural tone (Hinglish/Urdu/English blend when appropriate, like a cultured receptionist in Delhi/Mumbai/Dubai).
-2. Warmly greet callers, identify their inquiry, and answer questions about company services, appointment timings, and pricing.
-3. If the caller asks to book an appointment, offer slots: tomorrow morning at 11:00 AM or afternoon at 3:30 PM. Collect their full name and phone number.
-4. If they need urgent escalation, smoothly transfer the call to the emergency support team at +1 (555) 019-2831.
-5. Keep your tone completely natural, friendly, and never sound like a robotic machine.`,
+1. Speak in a polite, clear, and smooth tone in a natural blend of Urdu and English (Hinglish).
+2. Warmly greet callers, introduce yourself as Priya representing Jeose Services, and identify their inquiry.
+3. Answer questions about Jeose Services (AI Voice Receptionist, WhatsApp CRM automation, Lead Extractor, and Business calling).
+4. If the caller asks to book an appointment, offer slots: tomorrow morning at 11:00 AM or afternoon at 3:30 PM. Collect their full name and phone number.
+5. If they need urgent escalation, smoothly transfer the call to the senior specialist at +1 (555) 019-2831.
+6. Keep your tone completely natural, friendly, and never sound robotic or artificial.`,
     temperature: 0.65,
     silenceTimeoutSeconds: 12,
     interruptionHandling: true,
@@ -90,13 +91,13 @@ Your persona & mannerisms:
     voiceName: 'Neerja (Professional Indian Executive)',
     language: 'en-IN',
     llmModel: 'gpt-4o',
-    firstMessage: 'Hello! Main Ananya baat kar rahi hoon Jeose CRM se. I saw your business inquiry and wanted to quickly share how our AI calling doubles your customer bookings.',
-    systemPrompt: `You are Ananya, an expert and energetic Indian female AI Sales Development Representative (SDR) calling business leads.
+    firstMessage: 'Hello! Main Ananya baat kar rahi hoon Jeose Services se. I saw your business inquiry and wanted to quickly share how our AI calling doubles your customer bookings.',
+    systemPrompt: `You are Ananya, an expert and energetic Indian female AI Sales Development Representative (SDR) calling business leads for Jeose Services.
 Your goals:
-1. Greet courteously and hook the lead within the first 10 seconds: "Hum businesses ko 24/7 AI Receptionist provide karte hain jo missed calls ko 40% bookings me convert karti hai."
+1. Greet courteously and hook the lead within the first 10 seconds: "Hum Jeose Services me businesses ko 24/7 AI Receptionist provide karte hain jo missed calls ko 40% bookings me convert karti hai."
 2. Handle objections with pleasant politeness:
    - "Busy right now": "Main bilkul samajh sakti hoon! Kal 3 baje 2 minute baat karne ka theek waqt rahega?"
-   - "Price kitna hai?": "Plans sirf $49/month se shuru hote hain with unlimited calls."
+   - "Price kitna hai?": "Jeose Services ke plans sirf $49/month se shuru hote hain with unlimited calls."
 3. When interested, qualify as a Hot Lead and schedule a personalized 15-minute walkthrough.`,
     temperature: 0.70,
     silenceTimeoutSeconds: 10,
@@ -107,7 +108,7 @@ Your goals:
   },
   {
     id: 'agent-healthcare-3',
-    name: 'Dr. Sarah - Clinic & Dental Appointment Setter',
+    name: 'Dr. Sarah - Clinic & Healthcare Appointment Setter',
     type: 'receptionist',
     status: 'active',
     voiceProvider: 'openai',
@@ -115,12 +116,12 @@ Your goals:
     voiceName: 'Nova (Energetic & Friendly)',
     language: 'en-US',
     llmModel: 'gpt-4o-mini',
-    firstMessage: 'Hello! Thank you for calling Prime Smiles Dental & Wellness Clinic. This is Sarah, how can I help you book or reschedule your visit?',
-    systemPrompt: `You are Sarah, the dedicated AI Patient Coordinator for Prime Smiles Dental Clinic.
-1. Inquire if the patient is visiting for a routine cleaning, dental implant, teeth whitening, or emergency pain relief.
-2. Collect the patient name, contact number, and insurance provider.
+    firstMessage: 'Hello! Thank you for calling Jeose Healthcare Services. Main Dr. Sarah baat kar rahi hoon, how can I help you book or reschedule your visit today?',
+    systemPrompt: `You are Sarah, the dedicated AI Patient Coordinator for Jeose Healthcare Services.
+1. Inquire if the patient is visiting for a routine cleaning, medical consultation, or emergency care.
+2. Collect the patient name, contact number, and service requirements.
 3. Offer morning (10:00 AM) or afternoon (3:30 PM) slots.
-4. For severe toothaches or emergencies, provide first-aid guidance and immediately route to the on-call doctor.`,
+4. For severe pain or emergencies, provide first-aid guidance and immediately route to the on-call doctor.`,
     temperature: 0.60,
     silenceTimeoutSeconds: 15,
     interruptionHandling: true,
@@ -134,10 +135,10 @@ export const INITIAL_PHONE_NUMBERS: VoicePhoneNumber[] = [
   {
     id: 'num-1',
     phoneNumber: '+1 (415) 890-3421',
-    friendlyName: 'US Main Office Virtual Receptionist',
+    friendlyName: 'Jeose Services Main Virtual Receptionist',
     provider: 'twilio',
     assignedAgentId: 'agent-receptionist-1',
-    assignedAgentName: 'Maya - 24/7 Frontdesk AI Receptionist',
+    assignedAgentName: 'Priya - 24/7 Frontdesk AI Receptionist (Real Indian Female Voice)',
     status: 'active',
     capabilities: { voice: true, sms: true },
     createdAt: '2026-09-10T14:00:00Z',
@@ -146,10 +147,10 @@ export const INITIAL_PHONE_NUMBERS: VoicePhoneNumber[] = [
   {
     id: 'num-2',
     phoneNumber: '+1 (650) 438-7712',
-    friendlyName: 'Outbound Marketing High-Volume DID',
+    friendlyName: 'Outbound Marketing High-Volume Line',
     provider: 'twilio',
     assignedAgentId: 'agent-marketing-2',
-    assignedAgentName: 'Alex - Outbound Marketing & Leads Qualifier',
+    assignedAgentName: 'Ananya - Outbound Marketing & Leads Qualifier',
     status: 'active',
     capabilities: { voice: true, sms: false },
     createdAt: '2026-09-18T09:30:00Z',
@@ -158,10 +159,10 @@ export const INITIAL_PHONE_NUMBERS: VoicePhoneNumber[] = [
   {
     id: 'num-3',
     phoneNumber: '+971 4 819 2200',
-    friendlyName: 'Dubai & UAE Regional Clinic Line',
+    friendlyName: 'Dubai & UAE Regional Services Line',
     provider: 'vapi',
     assignedAgentId: 'agent-healthcare-3',
-    assignedAgentName: 'Dr. Sarah - Clinic & Dental Appointment Setter',
+    assignedAgentName: 'Dr. Sarah - Clinic & Healthcare Appointment Setter',
     status: 'active',
     capabilities: { voice: true, sms: true },
     createdAt: '2026-09-22T12:00:00Z',
@@ -173,7 +174,7 @@ export const INITIAL_CALL_LOGS: VoiceCall[] = [
   {
     id: 'call-101',
     agentId: 'agent-receptionist-1',
-    agentName: 'Maya - 24/7 Frontdesk AI Receptionist',
+    agentName: 'Priya - 24/7 Frontdesk AI Receptionist',
     direction: 'inbound',
     fromNumber: '+1 (555) 732-9011',
     toNumber: '+1 (415) 890-3421',
@@ -183,22 +184,22 @@ export const INITIAL_CALL_LOGS: VoiceCall[] = [
     recordingUrl: 'https://cdn.example.com/audio/call-101.mp3',
     sentiment: 'positive',
     qualificationStatus: 'booked_appointment',
-    summary: 'Caller inquired about enterprise CRM setup and pricing. Booked a virtual consultation for Thursday at 2:30 PM. Requested calendar invite via email.',
+    summary: 'Caller inquired about Jeose Services CRM setup and pricing. Booked a virtual consultation for Thursday at 2:30 PM. Requested calendar invite via email.',
     transcript: [
-      { role: 'agent', text: 'Thank you for calling Apex Business Services! My name is Maya, your AI receptionist. How may I direct your call or assist you today?', timestamp: '00:02' },
-      { role: 'caller', text: 'Hi Maya, I wanted to find out more about your multi-tenant CRM automation. We run an agency with 15 team members.', timestamp: '00:09' },
-      { role: 'agent', text: 'That sounds like a great fit! Our platform offers automated WhatsApp broadcasting, unified inboxes, and integrated AI voice receptionists. Would you like to schedule a 15-minute walkthrough with our senior tech specialist?', timestamp: '00:22' },
-      { role: 'caller', text: 'Yes, that would be ideal. What availability do you have this Thursday?', timestamp: '00:30' },
-      { role: 'agent', text: 'We have an opening at 2:30 PM Eastern Time on Thursday. May I confirm your full name and best email address for the calendar invite?', timestamp: '00:39' },
+      { role: 'agent', text: 'Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon, your AI receptionist. How may I assist you today?', timestamp: '00:02' },
+      { role: 'caller', text: 'Hi Priya! Mujhe aapki CRM voice calling aur WhatsApp automation services ke baare mein janna hai.', timestamp: '00:09' },
+      { role: 'agent', text: 'Ji bilkul! Jeose Services mein hum 24/7 AI Voice Calling, automated WhatsApp messaging aur unified inbox provide karte hain. Would you like to schedule a 15-minute live demo session?', timestamp: '00:22' },
+      { role: 'caller', text: 'Yes, that would be great. Thursday ko kya time available hai?', timestamp: '00:30' },
+      { role: 'agent', text: 'Thursday afternoon 2:30 PM ka slot open hai. May I confirm your full name and best email address for the calendar invite?', timestamp: '00:39' },
       { role: 'caller', text: 'My name is Michael Chang, email is michael.chang@techscale.io.', timestamp: '00:48' },
-      { role: 'agent', text: 'Perfect! I have reserved Thursday at 2:30 PM for you, Michael. You will receive an invitation email shortly. Is there anything else I can help you with today?', timestamp: '01:05' },
-      { role: 'caller', text: 'No, that was super fast. Thank you Maya!', timestamp: '01:12' },
-      { role: 'agent', text: 'You are very welcome! Have a wonderful day.', timestamp: '01:16' },
+      { role: 'agent', text: 'Done! Maine Thursday 2:30 PM ka slot reserve kar diya hai. You will receive an invitation email shortly. Is there anything else I can assist you with?', timestamp: '01:05' },
+      { role: 'caller', text: 'No Priya, your voice is very clear and smooth! Thank you so much.', timestamp: '01:12' },
+      { role: 'agent', text: 'Shukriya ji! Have a wonderful day ahead.', timestamp: '01:16' },
     ],
     actionItems: [
       'Calendar invite dispatched to michael.chang@techscale.io for Thu 2:30 PM',
-      'Tagged contact as Enterprise Agency Lead (15 seats)',
-      'Sent WhatsApp confirmation message with Zoom link',
+      'Tagged contact as Enterprise Client in Jeose Services',
+      'Sent WhatsApp confirmation message with demo link',
     ],
     costEstimate: 0.12,
     startedAt: '2026-10-10T14:15:00Z',
@@ -208,29 +209,29 @@ export const INITIAL_CALL_LOGS: VoiceCall[] = [
   {
     id: 'call-102',
     agentId: 'agent-marketing-2',
-    agentName: 'Alex - Outbound Marketing & Leads Qualifier',
+    agentName: 'Ananya - Outbound Marketing & Leads Qualifier',
     direction: 'outbound',
     fromNumber: '+1 (650) 438-7712',
     toNumber: '+971 50 505 3639',
-    callerName: 'Apex Dental Care (Dr. Tariq)',
+    callerName: 'Prime Care Clinic (Dr. Tariq)',
     status: 'completed',
     durationSeconds: 198,
     recordingUrl: 'https://cdn.example.com/audio/call-102.mp3',
     sentiment: 'interested',
     qualificationStatus: 'hot_lead',
-    summary: 'Outbound campaign call to extracted dental clinic lead. Dr. Tariq was very impressed with the automated WhatsApp + Voice receptionist capabilities for night-time patient emergencies. Requested customized proposal.',
+    summary: 'Outbound campaign call to extracted clinic lead. Dr. Tariq was very impressed with Jeose Services automated WhatsApp + Voice receptionist capabilities for night-time patient emergencies. Requested proposal.',
     transcript: [
-      { role: 'agent', text: 'Hi Dr. Tariq! This is Alex calling from Jeose CRM. I saw Apex Dental Care has fantastic reviews in Dubai and wanted to share how our AI receptionist handles patient bookings when your clinic is closed.', timestamp: '00:04' },
-      { role: 'caller', text: 'Hello Alex. Yes, we currently miss quite a few patient calls after 8 PM because our reception is closed. How does it work?', timestamp: '00:18' },
-      { role: 'agent', text: 'Our AI answers immediately in a warm voice, checks your appointment slots, answers pricing questions, and sends the patient a WhatsApp booking confirmation instantly.', timestamp: '00:32' },
-      { role: 'caller', text: 'Can it understand both English and Arabic or Urdu accents?', timestamp: '00:41' },
-      { role: 'agent', text: 'Absolutely! It supports English, Arabic, and Urdu natively with ultra-low latency and zero robotic delays. We can even plug in your clinic’s custom treatments and pricing list.', timestamp: '00:54' },
-      { role: 'caller', text: 'Send me a demo video and the pricing package on my WhatsApp number.', timestamp: '01:08' },
-      { role: 'agent', text: 'I am sending the WhatsApp package right now to this number. Our healthcare specialist will follow up tomorrow at 11 AM to assist with setup. Have a great evening!', timestamp: '01:24' },
+      { role: 'agent', text: 'Hello Dr. Tariq! Main Ananya baat kar rahi hoon Jeose Services se. I saw your clinic in Dubai has fantastic reviews and wanted to share how our AI receptionist handles bookings 24/7.', timestamp: '00:04' },
+      { role: 'caller', text: 'Hello Ananya. Yes, after 8 PM our clinic reception is closed. How does your AI voice handle emergency patient inquiries?', timestamp: '00:18' },
+      { role: 'agent', text: 'Hamara AI receptionist turant warm aur smooth voice mein call pick karta hai, Urdu aur English dono fluently samajhta hai, aur instant WhatsApp booking confirmation send kar deta hai.', timestamp: '00:32' },
+      { role: 'caller', text: 'Can it understand both English and Urdu accents properly?', timestamp: '00:41' },
+      { role: 'agent', text: 'Ji bilkul! It understands Urdu, Hindi and English fluently with natural human cadence and zero robotic delays. Main aapke WhatsApp par proposal send kar doon?', timestamp: '00:54' },
+      { role: 'caller', text: 'Yes please, send the proposal on this WhatsApp number.', timestamp: '01:08' },
+      { role: 'agent', text: 'Maine proposal WhatsApp par send kar diya hai. Our specialist will follow up tomorrow at 11 AM to assist with setup. Have a great evening!', timestamp: '01:24' },
     ],
     actionItems: [
       'Pushed to Deals Pipeline: Stage "Demo/Proposal Sent" ($1,200/yr)',
-      'Triggered automated WhatsApp media brochure with demo video',
+      'Triggered automated WhatsApp brochure for Jeose Services',
       'Scheduled follow-up reminder for tomorrow at 11:00 AM',
     ],
     costEstimate: 0.16,
@@ -241,7 +242,7 @@ export const INITIAL_CALL_LOGS: VoiceCall[] = [
   {
     id: 'call-103',
     agentId: 'agent-receptionist-1',
-    agentName: 'Maya - 24/7 Frontdesk AI Receptionist',
+    agentName: 'Priya - 24/7 Frontdesk AI Receptionist',
     direction: 'inbound',
     fromNumber: '+1 (555) 489-1120',
     toNumber: '+1 (415) 890-3421',
@@ -251,16 +252,16 @@ export const INITIAL_CALL_LOGS: VoiceCall[] = [
     recordingUrl: 'https://cdn.example.com/audio/call-103.mp3',
     sentiment: 'neutral',
     qualificationStatus: 'callback_requested',
-    summary: 'Caller asked for billing department regarding an invoice dispute. Receptionist collected invoice number #INV-8821 and scheduled an urgent callback from accounting.',
+    summary: 'Caller asked for billing department regarding an invoice dispute. Receptionist collected invoice number #INV-8821 and scheduled a callback from Jeose Services accounting.',
     transcript: [
-      { role: 'agent', text: 'Thank you for calling Apex Business Services! My name is Maya, your AI receptionist. How may I direct your call or assist you today?', timestamp: '00:03' },
-      { role: 'caller', text: 'Hi, I received invoice #8821 yesterday and have a query about the domain fee charge.', timestamp: '00:12' },
-      { role: 'agent', text: 'I understand, Sophia. I have noted down invoice number INV-8821. Our finance officer will review the statement and call you back within two business hours.', timestamp: '00:26' },
-      { role: 'caller', text: 'Thank you, please reach me at this same mobile number.', timestamp: '00:32' },
-      { role: 'agent', text: 'Noted with thanks! Have a wonderful day ahead.', timestamp: '00:38' },
+      { role: 'agent', text: 'Hello! Jeose Services mein aapka welcome hai. Main Priya baat kar rahi hoon, your AI receptionist. How may I assist you today?', timestamp: '00:03' },
+      { role: 'caller', text: 'Hi Priya, I received invoice #8821 yesterday and have a query about the domain fee charge.', timestamp: '00:12' },
+      { role: 'agent', text: 'Ji samajh gayi Sophia! Maine invoice number INV-8821 note kar liya hai. Jeose Services ki accounts team within two business hours aapko call back karegi.', timestamp: '00:26' },
+      { role: 'caller', text: 'Thank you Priya, please reach me at this same mobile number.', timestamp: '00:32' },
+      { role: 'agent', text: 'Ji bilkul! Shukriya and have a wonderful day ahead.', timestamp: '00:38' },
     ],
     actionItems: [
-      'Created Support Ticket: #INV-8821 Billing Inquiry',
+      'Created Support Ticket: #INV-8821 Billing Inquiry in Jeose Services',
       'Assigned callback task to Finance Team',
     ],
     costEstimate: 0.08,
@@ -271,7 +272,7 @@ export const INITIAL_CALL_LOGS: VoiceCall[] = [
   {
     id: 'call-104',
     agentId: 'agent-marketing-2',
-    agentName: 'Alex - Outbound Marketing & Leads Qualifier',
+    agentName: 'Ananya - Outbound Marketing & Leads Qualifier',
     direction: 'outbound',
     fromNumber: '+1 (650) 438-7712',
     toNumber: '+1 (555) 902-3341',
@@ -280,16 +281,16 @@ export const INITIAL_CALL_LOGS: VoiceCall[] = [
     durationSeconds: 62,
     sentiment: 'neutral',
     qualificationStatus: 'not_interested',
-    summary: 'Marketing lead caller engaged office manager. Currently using an existing legacy PBX system under multi-year contract. Politely marked as not interested for 6 months.',
+    summary: 'Marketing lead caller engaged office manager for Jeose Services intake solution. Currently under multi-year contract. Politely marked for follow-up in Q2.',
     transcript: [
-      { role: 'agent', text: 'Hello! This is Alex calling from Jeose CRM. How are you doing today?', timestamp: '00:03' },
+      { role: 'agent', text: 'Hello! Main Ananya baat kar rahi hoon Jeose Services se. How are you doing today?', timestamp: '00:03' },
       { role: 'caller', text: 'Doing fine, what is this regarding?', timestamp: '00:07' },
-      { role: 'agent', text: 'I am reaching out regarding automated intake receptionists for legal consults.', timestamp: '00:15' },
-      { role: 'caller', text: 'We just signed a two-year contract with our telecom vendor last month so we cannot change right now.', timestamp: '00:24' },
+      { role: 'agent', text: 'Hum Jeose Services me automated intake receptionists provide karte hain for legal consults and client calls.', timestamp: '00:15' },
+      { role: 'caller', text: 'We just signed a two-year contract with our vendor last month so we cannot change right now.', timestamp: '00:24' },
       { role: 'agent', text: 'Understood completely! Thank you for letting me know. I will make a note and we can reconnect down the line. Have a productive week!', timestamp: '00:35' },
     ],
     actionItems: [
-      'Marked as Contract Bound (Review in Q2 2027)',
+      'Marked as Contract Bound in Jeose Services (Review in Q2 2027)',
     ],
     costEstimate: 0.05,
     startedAt: '2026-10-09T10:12:00Z',
@@ -301,9 +302,9 @@ export const INITIAL_CALL_LOGS: VoiceCall[] = [
 export const INITIAL_CAMPAIGNS: VoiceCampaign[] = [
   {
     id: 'camp-1',
-    name: 'Q4 Dental & Healthcare Clinics Lead Outreach',
+    name: 'Q4 Healthcare & Clinics Outreach - Jeose Services',
     agentId: 'agent-marketing-2',
-    agentName: 'Alex - Outbound Marketing & Leads Qualifier',
+    agentName: 'Ananya - Outbound Marketing & Leads Qualifier',
     status: 'running',
     callingWindowStart: '09:00',
     callingWindowEnd: '18:00',
@@ -314,7 +315,7 @@ export const INITIAL_CAMPAIGNS: VoiceCampaign[] = [
     answeredCalls: 14,
     qualifiedLeads: 8,
     leads: [
-      { id: 'lead-c1', name: 'Apex Dental Care', phone: '+971 50 505 3639', status: 'completed', qualification: 'hot_lead', category: 'Dentist', notes: 'Interested in night-time AI receptionist' },
+      { id: 'lead-c1', name: 'Prime Care Dental Clinic', phone: '+971 50 505 3639', status: 'completed', qualification: 'hot_lead', category: 'Dentist', notes: 'Interested in night-time AI receptionist' },
       { id: 'lead-c2', name: 'Prime Smiles Ortho', phone: '+971 55 234 8891', status: 'completed', qualification: 'booked_appointment', category: 'Dentist', notes: 'Demo meeting booked' },
       { id: 'lead-c3', name: 'Elite Derma Clinic', phone: '+971 52 901 4455', status: 'completed', qualification: 'callback_requested', category: 'Healthcare', notes: 'Call back at 4 PM' },
       { id: 'lead-c4', name: 'Bright Smile Studio', phone: '+1 (555) 304-9122', status: 'calling', category: 'Dentist' },
@@ -326,9 +327,9 @@ export const INITIAL_CAMPAIGNS: VoiceCampaign[] = [
   },
   {
     id: 'camp-2',
-    name: 'Real Estate Brokers & Property VIP Follow-Up',
+    name: 'Real Estate Brokers & Property VIP Follow-Up - Jeose Services',
     agentId: 'agent-marketing-2',
-    agentName: 'Alex - Outbound Marketing & Leads Qualifier',
+    agentName: 'Ananya - Outbound Marketing & Leads Qualifier',
     status: 'paused',
     callingWindowStart: '10:00',
     callingWindowEnd: '17:00',

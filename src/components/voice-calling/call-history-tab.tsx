@@ -60,18 +60,18 @@ export function CallHistoryTab({ calls }: CallHistoryTabProps) {
       const textToPlay =
         call.transcript[0]?.text ||
         call.summary ||
-        `Namaste! Call recording playback for ${call.callerName || call.fromNumber}.`;
+        `Hello! Jeose Services call recording playback for ${call.callerName || call.fromNumber}.`;
       speakText(textToPlay, {
         onEnd: () => setPlayingCallId(null),
         onError: () => setPlayingCallId(null),
       });
-      toast.info(`Playing call audio excerpt with Priya's Indian female voice...`);
+      toast.info(`Playing call recording with Priya's smooth Indian female voice (Urdu + English)...`);
     }
   };
 
   const handleExportTranscript = (call: VoiceCall) => {
     const content = [
-      `CALL TRANSCRIPT - JEOSE CRM AI CALLING`,
+      `CALL TRANSCRIPT - JEOSE SERVICES AI CALLING`,
       `Date: ${new Date(call.startedAt).toLocaleString()}`,
       `Contact: ${call.callerName || "Unknown"} (${call.direction === "inbound" ? call.fromNumber : call.toNumber})`,
       `Agent: ${call.agentName || "Priya Receptionist"}`,

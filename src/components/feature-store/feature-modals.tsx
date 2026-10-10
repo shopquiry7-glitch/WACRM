@@ -48,7 +48,7 @@ interface Lead {
 const SAMPLE_LEADS: Lead[] = [
   {
     id: "lead-1",
-    name: "Apex Dental Clinic",
+    name: "Jeose Healthcare Partner",
     phone: "+1 (555) 234-8901",
     address: "742 Evergreen Terrace, Suite 101",
     category: "Dentist",

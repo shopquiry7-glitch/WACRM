@@ -553,10 +553,10 @@ export function InboundReceptionistTab({
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSendMessage("Salam! Kya aap Urdu ya Hindi mein baat kar sakte hain?")}
+                  onClick={() => handleSendMessage("Assalam-o-Alaikum! Jeose Services ke calling plans aur features kya hain?")}
                   className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] hover:border-violet-500 hover:text-violet-400 transition cursor-pointer"
                 >
-                  🇵🇰 Urdu / Hindi Test
+                  🇵🇰 Urdu + English Test
                 </button>
                 <button
                   type="button"
