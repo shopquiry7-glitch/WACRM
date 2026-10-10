@@ -18,9 +18,11 @@ import {
   ArrowUpDown,
   Flame,
   Volume2,
+  Download,
   X,
 } from "lucide-react";
 import type { VoiceCall, CallQualification } from "@/types/voice-calling";
+import { speakText, stopSpeaking } from "@/lib/voice-calling/voice-audio";
 import { toast } from "sonner";
 
 interface CallHistoryTabProps {
@@ -48,16 +50,48 @@ export function CallHistoryTab({ calls }: CallHistoryTabProps) {
     return matchesSearch && matchesDirection && matchesQual;
   });
 
-  const togglePlayAudio = (callId: string) => {
-    if (playingCallId === callId) {
+  const togglePlayAudio = (call: VoiceCall) => {
+    if (playingCallId === call.id) {
+      stopSpeaking();
       setPlayingCallId(null);
     } else {
-      setPlayingCallId(callId);
-      // Automatically stop after 6 seconds simulation
-      setTimeout(() => {
-        setPlayingCallId((prev) => (prev === callId ? null : prev));
-      }, 6000);
+      stopSpeaking();
+      setPlayingCallId(call.id);
+      const textToPlay =
+        call.transcript[0]?.text ||
+        call.summary ||
+        `Namaste! Call recording playback for ${call.callerName || call.fromNumber}.`;
+      speakText(textToPlay, {
+        onEnd: () => setPlayingCallId(null),
+        onError: () => setPlayingCallId(null),
+      });
+      toast.info(`Playing call audio excerpt with Priya's Indian female voice...`);
     }
+  };
+
+  const handleExportTranscript = (call: VoiceCall) => {
+    const content = [
+      `CALL TRANSCRIPT - JEOSE CRM AI CALLING`,
+      `Date: ${new Date(call.startedAt).toLocaleString()}`,
+      `Contact: ${call.callerName || "Unknown"} (${call.direction === "inbound" ? call.fromNumber : call.toNumber})`,
+      `Agent: ${call.agentName || "Priya Receptionist"}`,
+      `Duration: ${formatDuration(call.durationSeconds)}`,
+      `Outcome: ${call.qualificationStatus}`,
+      `Summary: ${call.summary || ""}`,
+      `\nDIALOGUE:`,
+      ...call.transcript.map((t) => `[${t.timestamp}] ${t.role.toUpperCase()}: ${t.text}`),
+      `\nACTION ITEMS:`,
+      ...call.actionItems.map((a) => `- ${a}`),
+    ].join("\n");
+
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `call-transcript-${call.id}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("Transcript exported to text file!");
   };
 
   const handlePushToPipeline = (call: VoiceCall) => {
@@ -252,7 +286,7 @@ export function CallHistoryTab({ calls }: CallHistoryTabProps) {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => togglePlayAudio(call.id)}
+                          onClick={() => togglePlayAudio(call)}
                           className={`flex h-7 w-7 items-center justify-center rounded-full transition cursor-pointer ${
                             playingCallId === call.id
                               ? "bg-violet-600 text-white shadow-sm"
@@ -325,13 +359,33 @@ export function CallHistoryTab({ calls }: CallHistoryTabProps) {
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedCall(null)}
-                className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => togglePlayAudio(selectedCall)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-xs font-semibold text-violet-300 hover:bg-violet-500/20 transition cursor-pointer"
+                  title="Play audio excerpt with Priya's Indian voice"
+                >
+                  <Volume2 className="h-3.5 w-3.5" />
+                  {playingCallId === selectedCall.id ? "Stop Voice" : "Listen to Voice"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExportTranscript(selectedCall)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition cursor-pointer"
+                  title="Export transcript as text file"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export .txt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCall(null)}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}

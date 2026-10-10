@@ -149,17 +149,17 @@ export function AgentBuilderTab({
     const newId = `agent-${Date.now()}`;
     const newAgent: VoiceAgent = {
       id: newId,
-      name: "New Custom AI Voice Agent",
+      name: "New Indian AI Voice Agent",
       type: "receptionist",
       status: "active",
       voiceProvider: "elevenlabs",
       voiceId: VOICE_PERSONAS[0].id,
       voiceName: VOICE_PERSONAS[0].name,
-      language: "en-US",
+      language: "en-IN",
       llmModel: "gpt-4o-mini",
-      firstMessage: "Hello! Thank you for calling. How can I assist you today?",
-      systemPrompt: "You are an intelligent customer support and receptionist agent.",
-      temperature: 0.7,
+      firstMessage: "Namaste! Main Priya baat kar rahi hoon. Aapki kis tarah madad kar sakti hoon? How may I assist you today?",
+      systemPrompt: "You are a warm, courteous Indian AI receptionist.",
+      temperature: 0.65,
       silenceTimeoutSeconds: 15,
       interruptionHandling: true,
       transferPhoneNumber: "+1 (555) 019-2831",
@@ -169,7 +169,7 @@ export function AgentBuilderTab({
     onSaveAgent(newAgent);
     handleSelectAgent(newAgent);
     setIsEditing(true);
-    toast.success("Created new agent draft. Edit configuration below.");
+    toast.success("Created new agent draft with Indian female voice.");
   };
 
   return (

@@ -8,22 +8,40 @@ import type {
 
 export const VOICE_PERSONAS = [
   {
+    id: 'priya-indian-natural',
+    name: 'Priya (Natural Indian Female - Warm & Courteous)',
+    provider: 'elevenlabs' as const,
+    gender: 'Female',
+    accent: 'Indian (Neutral English / Hindi / Urdu)',
+    description: 'Ultra-natural human female voice with polite Indian cadence. Zero robotic tone.',
+    sampleAudioText: 'Namaste! Thank you for calling Apex Business Services. Main Priya bol rahi hoon, aapki kya madad kar sakti hoon?',
+  },
+  {
+    id: 'neerja-indian-natural',
+    name: 'Neerja (Professional Indian Executive)',
+    provider: 'elevenlabs' as const,
+    gender: 'Female',
+    accent: 'Indian English',
+    description: 'Crisp, articulate corporate Indian receptionist tone, ideal for B2B sales & hot leads.',
+    sampleAudioText: 'Hello! This is Neerja calling from Jeose CRM. How may I assist your business growth today?',
+  },
+  {
+    id: 'swara-indian-hindi',
+    name: 'Swara (Fluent Hindi & Urdu Speaker)',
+    provider: 'elevenlabs' as const,
+    gender: 'Female',
+    accent: 'Hindi / Urdu / English',
+    description: 'Gentle, soothing Indian tone for clinics, salons, and customer reception.',
+    sampleAudioText: 'Namaste aur Assalam-o-Alaikum! Hamare clinic me aapka swagat hai. Main aapki booking confirm kar sakti hoon.',
+  },
+  {
     id: '21m00Tcm4TlvDq8ikWAM',
     name: 'Rachel (Warm & Empathetic)',
     provider: 'elevenlabs' as const,
     gender: 'Female',
     accent: 'American (Neutral)',
-    description: 'Natural, calming, ideal for 24/7 Frontdesk Receptionist & Clinic Bookings',
+    description: 'Natural international voice for overseas global clients',
     sampleAudioText: 'Thank you for calling! I would be delighted to help you schedule an appointment.',
-  },
-  {
-    id: 'pNInz6obpgDQGcFmaJgB',
-    name: 'Adam (Confident & Persuasive)',
-    provider: 'elevenlabs' as const,
-    gender: 'Male',
-    accent: 'American',
-    description: 'High-energy, crisp articulation, perfect for Outbound Marketing & B2B Lead Calling',
-    sampleAudioText: 'Hey there! I am following up on your inquiry regarding our automated growth solutions.',
   },
   {
     id: 'EXAVITQu4vr4xnSDxMaL',
@@ -31,47 +49,30 @@ export const VOICE_PERSONAS = [
     provider: 'elevenlabs' as const,
     gender: 'Female',
     accent: 'British',
-    description: 'Sophisticated tone, exceptional for Real Estate, Luxury Sales, and VIP Inbound Desk',
+    description: 'Sophisticated tone for luxury sales and VIP concierge',
     sampleAudioText: 'Good afternoon. Welcome to Prime Properties. May I assist you with your investment search?',
-  },
-  {
-    id: 'alloy',
-    name: 'Alloy (Clear & Direct)',
-    provider: 'openai' as const,
-    gender: 'Neutral',
-    accent: 'American',
-    description: 'Low-latency conversational voice for high-volume customer support & triage',
-    sampleAudioText: 'Hello! I can answer questions about your account and recent service requests right now.',
-  },
-  {
-    id: 'nova',
-    name: 'Nova (Energetic & Friendly)',
-    provider: 'openai' as const,
-    gender: 'Female',
-    accent: 'American',
-    description: 'Upbeat and engaging, great for event promotions and marketing follow-ups',
-    sampleAudioText: 'Hi! We just launched a special offer for your business and I wanted to make sure you got the details.',
   },
 ];
 
 export const INITIAL_VOICE_AGENTS: VoiceAgent[] = [
   {
     id: 'agent-receptionist-1',
-    name: 'Maya - 24/7 Frontdesk AI Receptionist',
+    name: 'Priya - 24/7 Frontdesk AI Receptionist (Indian Female Voice)',
     type: 'receptionist',
     status: 'active',
     voiceProvider: 'elevenlabs',
-    voiceId: '21m00Tcm4TlvDq8ikWAM',
-    voiceName: 'Rachel (Warm & Empathetic)',
-    language: 'en-US',
+    voiceId: 'priya-indian-natural',
+    voiceName: 'Priya (Natural Indian Female)',
+    language: 'en-IN',
     llmModel: 'gpt-4o-mini',
-    firstMessage: 'Thank you for calling Apex Business Services! My name is Maya, your AI receptionist. How may I direct your call or assist you today?',
-    systemPrompt: `You are Maya, an ultra-professional, friendly, and efficient AI Frontdesk Receptionist for Apex Business Services.
-Your responsibilities:
-1. Warmly greet callers, identify their inquiry, and answer questions about company services, working hours (Mon-Sat 9 AM to 7 PM), and location.
-2. If the caller wants to book an appointment or consultation, politely ask for their preferred day, time, and full name.
-3. If they need technical support or urgent escalation, offer to transfer the call to the emergency support team at +1 (555) 019-2831.
-4. Keep answers concise, natural, conversational, and avoid robotic repetition. Always confirm details politely.`,
+    firstMessage: 'Namaste! Thank you for calling Apex Business Services. My name is Priya, your receptionist. Aapki kis tarah madad kar sakti hoon? How may I assist you today?',
+    systemPrompt: `You are Priya, a courteous, warm, and highly professional Indian female AI Frontdesk Receptionist for Apex Business Services.
+Your persona & mannerisms:
+1. Speak in a polite, respectful, and natural tone (Hinglish/Urdu/English blend when appropriate, like a cultured receptionist in Delhi/Mumbai/Dubai).
+2. Warmly greet callers, identify their inquiry, and answer questions about company services, appointment timings, and pricing.
+3. If the caller asks to book an appointment, offer slots: tomorrow morning at 11:00 AM or afternoon at 3:30 PM. Collect their full name and phone number.
+4. If they need urgent escalation, smoothly transfer the call to the emergency support team at +1 (555) 019-2831.
+5. Keep your tone completely natural, friendly, and never sound like a robotic machine.`,
     temperature: 0.65,
     silenceTimeoutSeconds: 12,
     interruptionHandling: true,
@@ -81,24 +82,22 @@ Your responsibilities:
   },
   {
     id: 'agent-marketing-2',
-    name: 'Alex - Outbound Marketing & Leads Qualifier',
+    name: 'Ananya - Outbound Marketing & Leads Qualifier (Indian Female Voice)',
     type: 'outbound_marketing',
     status: 'active',
     voiceProvider: 'elevenlabs',
-    voiceId: 'pNInz6obpgDQGcFmaJgB',
-    voiceName: 'Adam (Confident & Persuasive)',
-    language: 'en-US',
+    voiceId: 'neerja-indian-natural',
+    voiceName: 'Neerja (Professional Indian Executive)',
+    language: 'en-IN',
     llmModel: 'gpt-4o',
-    firstMessage: 'Hi! This is Alex calling from Jeose CRM. I saw your recent business interest and wanted to see if you have two minutes to check our new AI automation tools?',
-    systemPrompt: `You are Alex, an expert AI Sales Development Representative (SDR) making outbound marketing calls to qualified business leads.
+    firstMessage: 'Hello! Main Ananya baat kar rahi hoon Jeose CRM se. I saw your business inquiry and wanted to quickly share how our AI calling doubles your customer bookings.',
+    systemPrompt: `You are Ananya, an expert and energetic Indian female AI Sales Development Representative (SDR) calling business leads.
 Your goals:
-1. Hook the lead within the first 10 seconds with value: "We help companies automate customer WhatsApp and voice inquiries 24/7, boosting conversion by 40%."
-2. Gauge their interest: Ask if they currently lose leads after business hours or handle calls manually.
-3. Handle common objections smoothly:
-   - "Not interested": "I completely understand! Can I send you a 1-page WhatsApp summary instead so you have it for future reference?"
-   - "Too busy": "No problem at all! When is a better 5-minute window tomorrow afternoon?"
-   - "How much does it cost?": "Plans start as low as $49/month with zero per-agent fee."
-4. If interested or asks for a demo: Qualify them as a Hot Lead and schedule a live 10-minute demo session.`,
+1. Greet courteously and hook the lead within the first 10 seconds: "Hum businesses ko 24/7 AI Receptionist provide karte hain jo missed calls ko 40% bookings me convert karti hai."
+2. Handle objections with pleasant politeness:
+   - "Busy right now": "Main bilkul samajh sakti hoon! Kal 3 baje 2 minute baat karne ka theek waqt rahega?"
+   - "Price kitna hai?": "Plans sirf $49/month se shuru hote hain with unlimited calls."
+3. When interested, qualify as a Hot Lead and schedule a personalized 15-minute walkthrough.`,
     temperature: 0.70,
     silenceTimeoutSeconds: 10,
     interruptionHandling: true,

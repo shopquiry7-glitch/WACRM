@@ -21,7 +21,7 @@ import {
   Sliders,
 } from "lucide-react";
 import type { VoiceAgent, VoiceCall, CallTranscriptTurn } from "@/types/voice-calling";
-import { speakText, stopSpeaking, generateSimulatedAgentResponse } from "@/lib/voice-calling/voice-audio";
+import { speakText, stopSpeaking, generateSimulatedAgentResponse, startMicRecognition } from "@/lib/voice-calling/voice-audio";
 import { toast } from "sonner";
 
 interface InboundReceptionistTabProps {
@@ -39,6 +39,7 @@ export function InboundReceptionistTab({
   const [isCalling, setIsCalling] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [transcript, setTranscript] = useState<CallTranscriptTurn[]>([]);
   const [userInput, setUserInput] = useState("");
@@ -53,6 +54,7 @@ export function InboundReceptionistTab({
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
+  const micControllerRef = useRef<{ stop: () => void } | null>(null);
 
   // Auto-scroll transcript
   useEffect(() => {
@@ -212,6 +214,32 @@ export function InboundReceptionistTab({
     onSaveAgent(updated);
     setIsEditing(false);
     toast.success("AI Receptionist configuration updated successfully!");
+  };
+
+  const handleToggleMic = () => {
+    if (!isCalling) {
+      toast.info("Please start the call first to speak with the receptionist");
+      return;
+    }
+    if (isListening) {
+      micControllerRef.current?.stop();
+      setIsListening(false);
+    } else {
+      setIsListening(true);
+      toast.info("Listening to your voice... Speak now!");
+      micControllerRef.current = startMicRecognition(
+        (transcriptText) => {
+          setIsListening(false);
+          setUserInput(transcriptText);
+          handleSendMessage(transcriptText);
+        },
+        () => setIsListening(false),
+        () => {
+          setIsListening(false);
+          toast.error("Microphone permission or speech recognition error");
+        }
+      );
+    }
   };
 
   return (
@@ -549,13 +577,29 @@ export function InboundReceptionistTab({
                 }}
                 className="flex items-center gap-2"
               >
+                <button
+                  type="button"
+                  disabled={!isCalling}
+                  onClick={handleToggleMic}
+                  title={isListening ? "Listening... click to stop" : "Speak into microphone"}
+                  className={`h-9 w-9 rounded-xl border flex items-center justify-center transition cursor-pointer shrink-0 ${
+                    isListening
+                      ? "bg-rose-600 text-white border-rose-600 animate-pulse shadow-md shadow-rose-600/30"
+                      : "border-border bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  <Mic className="h-4 w-4" />
+                </button>
+
                 <input
                   type="text"
                   disabled={!isCalling}
                   placeholder={
                     isCalling
-                      ? "Type what you want to say to the AI Receptionist..."
-                      : "Start the call above to speak with the receptionist"
+                      ? isListening
+                        ? "Listening to your voice... Speak now!"
+                        : "Type or use mic to talk to Priya..."
+                      : "Start the call above to speak with Priya"
                   }
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
