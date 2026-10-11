@@ -32,6 +32,33 @@ import {
 } from "@/lib/voice-calling/custom-voice-db";
 import { speakText, stopSpeaking, playSampleRecording } from "@/lib/voice-calling/voice-audio";
 
+export const ELEVENLABS_FREE_VOICES = [
+  {
+    id: "EXAVITQu4vr4xnSDxMaL",
+    name: "Sarah (Warm & Confident)",
+    tag: "Default CRM Specialist",
+    description: "Reassuring, polite tone speaking fluent bilingual Urdu and English.",
+  },
+  {
+    id: "cgSgspJ2msm6clMCkdW9",
+    name: "Jessica (Bright & Cheerful)",
+    tag: "Marketing & Onboarding",
+    description: "Energetic and friendly cadence, ideal for AED 299 package sales pitch.",
+  },
+  {
+    id: "hpp4J3VqNfWAUOO0d1Us",
+    name: "Bella (Corporate & Professional)",
+    tag: "Executive Receptionist",
+    description: "Articulate and crisp corporate tone, perfect for high-value business leads.",
+  },
+  {
+    id: "pFZP5JQG7iQjIQuC4Bku",
+    name: "Lily (Soft & Gentle)",
+    tag: "Care & Support",
+    description: "Calm, soothing voice great for booking appointments and customer care.",
+  },
+];
+
 interface CustomVoiceTabProps {
   onNavigateToDialer: () => void;
 }
@@ -355,6 +382,17 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
     setShowKeyInput(false);
   };
 
+  // Select an ElevenLabs Free tier female studio voice
+  const handleSelectFreeVoice = (voice: (typeof ELEVENLABS_FREE_VOICES)[0]) => {
+    setCustomVoiceId(voice.id);
+    setCustomVoiceFileName(voice.name);
+    setCustomVoiceProvider("elevenlabs");
+    localStorage.setItem("custom_maya_voice_id", voice.id);
+    localStorage.setItem("custom_maya_voice_name", voice.name);
+    localStorage.setItem("custom_maya_voice_provider", "elevenlabs");
+    toast.success(`Voice set to ${voice.name}! Maya will now speak calls in this voice.`);
+  };
+
   // Reset to default Maya voice
   const handleReset = async () => {
     ttsControllerRef.current?.cancel();
@@ -552,6 +590,82 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
           <span>
             <strong>Professional Voice Synthesis:</strong> Maya aapki uploaded recording ko direct nahi chalati. Maya <strong>sirf aapki aawaz clone</strong> karti hai aur client se baat karte waqt ya niche text box me koi bhi text dene par <strong>wahi exact jumla usi aawaz mein</strong> bolti hai!
           </span>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 🎙️ ELEVENLABS FREE PLAN STUDIO VOICES (100% FREE) */}
+      {/* ======================================================== */}
+      <div className="rounded-3xl border-2 border-violet-500/40 bg-card p-6 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-violet-500/15 text-violet-400">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-foreground text-base">
+                🎙️ ElevenLabs Free Plan Voices (100% Free — No Paid Plan Required)
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Aapke Free Plan par yeh top human female studio voices active hain. Kisi bhi voice par click karke Maya ki aawaz switch karein:
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full shrink-0">
+            ✓ 10,000 Free Chars Active
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
+          {ELEVENLABS_FREE_VOICES.map((v) => {
+            const isSelected = customVoiceId === v.id || (!customVoiceId && v.id === "EXAVITQu4vr4xnSDxMaL");
+            return (
+              <div
+                key={v.id}
+                onClick={() => handleSelectFreeVoice(v)}
+                className={`relative rounded-2xl border-2 p-4 cursor-pointer transition flex flex-col justify-between gap-3 ${
+                  isSelected
+                    ? "border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10"
+                    : "border-border/80 bg-muted/20 hover:border-violet-500/50 hover:bg-violet-500/5"
+                }`}
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300">
+                      {v.tag}
+                    </span>
+                    {isSelected && (
+                      <span className="flex items-center gap-1 text-[11px] font-extrabold text-emerald-400">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                    <span>{v.name}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    {v.description}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectFreeVoice(v);
+                  }}
+                  className={`w-full py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                    isSelected
+                      ? "bg-emerald-600 text-white"
+                      : "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {isSelected ? "Active Maya Voice" : "Use This Voice"}
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 

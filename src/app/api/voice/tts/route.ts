@@ -1,13 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 
 /**
  * High-fidelity Dynamic Text-To-Speech (TTS) Engine
  * Synthesizes dynamic text into human speech using:
- * 1. ElevenLabs Cloned Voice (when cloned voice ID and API key are available)
+ * 1. ElevenLabs Studio & Cloned Voice (with persistent caching for Free Plan quota saving)
  * 2. Natural Neural Multilingual TTS (Urdu, Hindi, Indian English)
  * 
  * NOTE: Never returns static audio files. Always generates speech for the given text!
  */
+
+// Persistent cache for ElevenLabs generated audio to conserve character quota on Free Plan
+const ttsMemoryCache = new Map<string, Buffer>();
+
+function getCacheDir(): string {
+  const dir = path.join(process.cwd(), 'public', 'sounds', 'tts-cache');
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch {}
+  return dir;
+}
+
+function getCacheKey(voiceId: string, text: string): string {
+  return crypto.createHash('md5').update(`${voiceId}:${text.trim().toLowerCase()}`).digest('hex');
+}
+
+function getCachedAudio(voiceId: string, text: string): Buffer | null {
+  const key = getCacheKey(voiceId, text);
+  if (ttsMemoryCache.has(key)) {
+    return ttsMemoryCache.get(key)!;
+  }
+  try {
+    const filePath = path.join(getCacheDir(), `${key}.mp3`);
+    if (fs.existsSync(filePath)) {
+      const buf = fs.readFileSync(filePath);
+      ttsMemoryCache.set(key, buf);
+      return buf;
+    }
+  } catch {}
+  return null;
+}
+
+function saveCachedAudio(voiceId: string, text: string, audioBuffer: Buffer): void {
+  const key = getCacheKey(voiceId, text);
+  ttsMemoryCache.set(key, audioBuffer);
+  try {
+    const filePath = path.join(getCacheDir(), `${key}.mp3`);
+    fs.writeFileSync(filePath, audioBuffer);
+  } catch {}
+}
 
 // Helper to chunk text for natural human cadence (max ~180 chars per phrase)
 function chunkText(text: string, maxLen = 180): string[] {
@@ -131,6 +176,20 @@ async function handleSynthesize(
         ? voiceId
         : 'EXAVITQu4vr4xnSDxMaL';
 
+    // Check disk & memory cache to save ElevenLabs Free quota!
+    const cachedBuffer = getCachedAudio(effectiveVoiceId, trimmed);
+    if (cachedBuffer) {
+      return new Response(new Uint8Array(cachedBuffer), {
+        status: 200,
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Content-Length': cachedBuffer.length.toString(),
+          'Cache-Control': 'public, max-age=31536000, immutable',
+          'X-Voice-Engine': 'ElevenLabs-Cached',
+        },
+      });
+    }
+
     try {
       const elUrl = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(effectiveVoiceId)}`;
       const elRes = await fetch(elUrl, {
@@ -154,13 +213,15 @@ async function handleSynthesize(
 
       if (elRes.ok) {
         const audioBuffer = await elRes.arrayBuffer();
-        return new Response(audioBuffer, {
+        const buf = Buffer.from(audioBuffer);
+        saveCachedAudio(effectiveVoiceId, trimmed, buf);
+        return new Response(new Uint8Array(buf), {
           status: 200,
           headers: {
             'Content-Type': 'audio/mpeg',
-            'Content-Length': audioBuffer.byteLength.toString(),
-            'Cache-Control': 'no-cache',
-            'X-Voice-Engine': 'ElevenLabs-Clone',
+            'Content-Length': buf.length.toString(),
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            'X-Voice-Engine': 'ElevenLabs-Multilingual',
           },
         });
       } else {
