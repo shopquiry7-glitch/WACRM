@@ -7,6 +7,7 @@
 const DB_NAME = 'jeose_voice_calling_db';
 const STORE_NAME = 'maya_custom_voice_store';
 const VOICE_KEY = 'active_maya_voice';
+export const DEFAULT_ELEVENLABS_KEY = 'sk_d82770e4aae853c995bf06f92d5b671aab1857d15def25a5';
 
 export interface ClonedVoiceRecord {
   dataUrl: string; // The original audio sample for preview
@@ -82,7 +83,7 @@ export async function saveCustomVoice(
   const voiceName = filename || 'Real Human Voice Recording';
   let voiceId = options?.voiceId || 'neural_custom_clone';
   let provider = options?.provider || 'neural';
-  const apiKey = options?.apiKey || (typeof window !== 'undefined' ? localStorage.getItem('custom_maya_elevenlabs_key') || '' : '');
+  const apiKey = options?.apiKey || (typeof window !== 'undefined' ? localStorage.getItem('custom_maya_elevenlabs_key') || DEFAULT_ELEVENLABS_KEY : DEFAULT_ELEVENLABS_KEY);
 
   // If no voiceId passed but we have an API key, attempt voice cloning via backend
   if (!options?.voiceId) {
@@ -173,7 +174,7 @@ export function getCustomVoiceSync(): ClonedVoiceRecord | null {
     const storedName = localStorage.getItem('custom_maya_voice_name');
     const storedVoiceId = localStorage.getItem('custom_maya_voice_id');
     const storedProvider = (localStorage.getItem('custom_maya_voice_provider') as 'elevenlabs' | 'neural') || 'neural';
-    const storedApiKey = localStorage.getItem('custom_maya_elevenlabs_key') || '';
+    const storedApiKey = localStorage.getItem('custom_maya_elevenlabs_key') || DEFAULT_ELEVENLABS_KEY;
 
     // If stored or if default audio file exists
     const effectiveUrl =
@@ -225,7 +226,7 @@ export async function getCustomVoice(): Promise<{
     const storedName = localStorage.getItem('custom_maya_voice_name');
     const storedVoiceId = localStorage.getItem('custom_maya_voice_id');
     const storedProvider = (localStorage.getItem('custom_maya_voice_provider') as 'elevenlabs' | 'neural') || null;
-    const storedApiKey = localStorage.getItem('custom_maya_elevenlabs_key') || null;
+    const storedApiKey = localStorage.getItem('custom_maya_elevenlabs_key') || DEFAULT_ELEVENLABS_KEY;
 
     if (storedUrl && !storedUrl.startsWith('indexeddb:')) {
       cachedVoice = {

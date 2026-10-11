@@ -28,6 +28,7 @@ import {
   getCustomVoice,
   clearCustomVoice,
   saveElevenLabsApiKey,
+  DEFAULT_ELEVENLABS_KEY,
 } from "@/lib/voice-calling/custom-voice-db";
 import { speakText, stopSpeaking, playSampleRecording } from "@/lib/voice-calling/voice-audio";
 
@@ -42,9 +43,10 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
   const [customVoiceId, setCustomVoiceId] = useState<string | null>(null);
   const [customVoiceProvider, setCustomVoiceProvider] = useState<"elevenlabs" | "neural" | null>("neural");
   const [isUploading, setIsUploading] = useState(false);
+  const [isCloningElevenLabs, setIsCloningElevenLabs] = useState(false);
 
   // ElevenLabs API Key state
-  const [elevenlabsKey, setElevenlabsKey] = useState("");
+  const [elevenlabsKey, setElevenlabsKey] = useState(DEFAULT_ELEVENLABS_KEY);
   const [showKeyInput, setShowKeyInput] = useState(false);
 
   // Mic recording state
@@ -93,31 +95,48 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
     }
 
     setIsUploading(true);
-    const toastId = toast.loading(`Cloning voice timbre from "${file.name}"...`);
+    const toastId = toast.loading(`Cloning voice from "${file.name}"...`);
 
     try {
       const record = await saveCustomVoice(file, file.name, {
-        apiKey: elevenlabsKey || undefined,
+        apiKey: elevenlabsKey || DEFAULT_ELEVENLABS_KEY,
       });
 
       setCustomVoiceUrl(record.dataUrl);
       setCustomVoiceFileName(record.name);
-      setCustomVoiceId(record.voiceId || "neural_custom_clone");
-      setCustomVoiceProvider(record.provider || "neural");
 
-      // Also backup to backend
+      // Call backend clone endpoint
       const formData = new FormData();
       formData.append("file", file);
-      if (elevenlabsKey) formData.append("apiKey", elevenlabsKey);
-      fetch("/api/voice/clone", {
+      const effectiveKey = elevenlabsKey || DEFAULT_ELEVENLABS_KEY;
+      if (effectiveKey) formData.append("apiKey", effectiveKey);
+      formData.append("voiceName", `Maya (${file.name})`);
+
+      const res = await fetch("/api/voice/clone", {
         method: "POST",
         body: formData,
-      }).catch(() => {});
+      });
 
-      toast.success(
-        `Aawaz successfully clone ho gayi! Maya sirf yeh aawaz use karegi aur koi bhi dynamic text is aawaz mein bolegi.`,
-        { id: toastId, duration: 4000 }
-      );
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success && data.voiceId && data.voiceId !== "neural_custom_clone") {
+        setCustomVoiceId(data.voiceId);
+        setCustomVoiceProvider("elevenlabs");
+        saveElevenLabsApiKey(effectiveKey);
+        localStorage.setItem("custom_maya_voice_id", data.voiceId);
+        localStorage.setItem("custom_maya_voice_provider", "elevenlabs");
+        toast.success(
+          `🎉 Voice Successfully Cloned! Voice ID: ${data.voiceId}. Maya can now speak any dynamic text in this voice!`,
+          { id: toastId, duration: 6000 }
+        );
+      } else if (data.error) {
+        toast.error(data.error, { id: toastId, duration: 8000 });
+      } else {
+        toast.success(
+          `Aawaz profile saved! Maya sirf yeh aawaz use karegi aur dynamic text bolegi.`,
+          { id: toastId, duration: 4000 }
+        );
+      }
     } catch (err) {
       console.error("Upload error:", err);
       toast.error("Voice processing error. Please try again.", { id: toastId });
@@ -126,6 +145,53 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+    }
+  };
+
+  // Clone from already saved/uploaded recording using ElevenLabs API
+  const handleCloneWithElevenLabs = async () => {
+    const keyToUse = elevenlabsKey || DEFAULT_ELEVENLABS_KEY;
+    if (!keyToUse) {
+      toast.error("Please enter your ElevenLabs API Key.");
+      return;
+    }
+
+    setIsCloningElevenLabs(true);
+    const toastId = toast.loading("Connecting to ElevenLabs to clone your voice sample...");
+
+    try {
+      const res = await fetch("/api/voice/clone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apiKey: keyToUse,
+          voiceName: "Maya Urdu Real Cloned Voice",
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success && data.voiceId && data.voiceId !== "neural_custom_clone") {
+        setCustomVoiceId(data.voiceId);
+        setCustomVoiceProvider("elevenlabs");
+        saveElevenLabsApiKey(keyToUse);
+        localStorage.setItem("custom_maya_voice_id", data.voiceId);
+        localStorage.setItem("custom_maya_voice_provider", "elevenlabs");
+        toast.success(
+          `🎉 Voice Cloned Successfully via ElevenLabs! Voice ID: ${data.voiceId}. Any call or text will now speak in this voice!`,
+          { id: toastId, duration: 7000 }
+        );
+      } else {
+        const errorMsg = data.error || "ElevenLabs cloning failed.";
+        toast.error(errorMsg, {
+          id: toastId,
+          duration: 8000,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Network error while connecting to ElevenLabs.", { id: toastId });
+    } finally {
+      setIsCloningElevenLabs(false);
     }
   };
 
@@ -154,28 +220,44 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
 
         const toastId = toast.loading("Analyzing and cloning your voice recording...");
         try {
+          const effectiveKey = elevenlabsKey || DEFAULT_ELEVENLABS_KEY;
           const record = await saveCustomVoice(audioBlob, "Microphone Voice Recording", {
-            apiKey: elevenlabsKey || undefined,
+            apiKey: effectiveKey,
           });
 
           setCustomVoiceUrl(record.dataUrl);
           setCustomVoiceFileName("Microphone Voice Recording");
-          setCustomVoiceId(record.voiceId || "neural_custom_clone");
-          setCustomVoiceProvider(record.provider || "neural");
 
-          // Also send to backend
+          // Backend clone call
           const formData = new FormData();
           formData.append("file", audioBlob, "mic-voice.webm");
-          if (elevenlabsKey) formData.append("apiKey", elevenlabsKey);
-          fetch("/api/voice/clone", {
+          if (effectiveKey) formData.append("apiKey", effectiveKey);
+          formData.append("voiceName", "Maya (Mic Recording)");
+
+          const res = await fetch("/api/voice/clone", {
             method: "POST",
             body: formData,
-          }).catch(() => {});
-
-          toast.success("Aawaz successfully clone ho gayi! Ab koi bhi text bol kar test karein.", {
-            id: toastId,
-            duration: 4000,
           });
+
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.success && data.voiceId && data.voiceId !== "neural_custom_clone") {
+            setCustomVoiceId(data.voiceId);
+            setCustomVoiceProvider("elevenlabs");
+            saveElevenLabsApiKey(effectiveKey);
+            localStorage.setItem("custom_maya_voice_id", data.voiceId);
+            localStorage.setItem("custom_maya_voice_provider", "elevenlabs");
+            toast.success(
+              `🎉 Mic Voice Cloned with ElevenLabs! Voice ID: ${data.voiceId}. Maya will now speak any text in this voice!`,
+              { id: toastId, duration: 6000 }
+            );
+          } else if (data.error) {
+            toast.error(data.error, { id: toastId, duration: 8000 });
+          } else {
+            toast.success("Aawaz successfully clone ho gayi! Ab koi bhi text bol kar test karein.", {
+              id: toastId,
+              duration: 4000,
+            });
+          }
         } catch {
           toast.error("Error cloning voice recording", { id: toastId });
         }
@@ -444,10 +526,24 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
               >
                 Save Key
               </button>
+              <button
+                type="button"
+                disabled={isCloningElevenLabs}
+                onClick={handleCloneWithElevenLabs}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-md shrink-0"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>{isCloningElevenLabs ? "Cloning Voice..." : "⚡ Clone Voice Now"}</span>
+              </button>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Agar aapke paas ElevenLabs key nahi hai, koi baat nahi — hamara built-in Multilingual Neural Voice Cloner bina key ke bhi automatically dynamic aawaz mein bolega!
-            </p>
+            <div className="text-[11px] text-muted-foreground bg-muted/40 p-2.5 rounded-xl border border-border/70 space-y-1">
+              <div className="font-semibold text-foreground flex items-center gap-1">
+                <span>⚠️ Important ElevenLabs Permissions:</span>
+              </div>
+              <p>
+                API Key generate karte waqt <strong>&quot;Full Access&quot;</strong> select karein ya <strong>Voices (Write)</strong> aur <strong>Text-to-Speech</strong> permissions zaroor enable karein. Agar permissions missing hongi toh ElevenLabs error dega.
+              </p>
+            </div>
           </div>
         )}
 

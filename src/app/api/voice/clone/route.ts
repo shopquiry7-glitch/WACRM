@@ -45,6 +45,24 @@ export async function POST(req: NextRequest) {
     }
 
     if (!fileBuffer || fileBuffer.length === 0) {
+      try {
+        const mp3Path = path.join(process.cwd(), 'public', 'sounds', 'custom-maya-voice.mp3');
+        const webmPath = path.join(process.cwd(), 'public', 'sounds', 'custom-maya-voice.webm');
+        if (fs.existsSync(mp3Path)) {
+          fileBuffer = fs.readFileSync(mp3Path);
+          fileName = 'custom-maya-voice.mp3';
+          mimeType = 'audio/mpeg';
+        } else if (fs.existsSync(webmPath)) {
+          fileBuffer = fs.readFileSync(webmPath);
+          fileName = 'custom-maya-voice.webm';
+          mimeType = 'audio/webm';
+        }
+      } catch (e) {
+        console.warn('Could not read fallback sound file:', e);
+      }
+    }
+
+    if (!fileBuffer || fileBuffer.length === 0) {
       return NextResponse.json({ error: 'Audio file buffer is required' }, { status: 400 });
     }
 
@@ -93,9 +111,31 @@ export async function POST(req: NextRequest) {
         } else {
           const errText = await elRes.text();
           console.warn('ElevenLabs clone error response:', errText);
+          let message = 'ElevenLabs cloning failed.';
+          try {
+            const parsed = JSON.parse(errText);
+            if (parsed.detail?.message) message = parsed.detail.message;
+          } catch {
+            message = errText;
+          }
+
+          const isPermissionError = message.toLowerCase().includes('missing the permission');
+          return NextResponse.json({
+            success: false,
+            error: isPermissionError
+              ? `ElevenLabs Key Error: ${message}. ElevenLabs dashboard me API Key ko "Full Access" ya "Voices (Write)" permission dein.`
+              : `ElevenLabs Error: ${message}`,
+            isPermissionError,
+            provider: 'elevenlabs',
+          }, { status: 400 });
         }
       } catch (cloneErr) {
         console.warn('ElevenLabs voice cloning call failed:', cloneErr);
+        return NextResponse.json({
+          success: false,
+          error: `Network error connecting to ElevenLabs: ${String(cloneErr)}`,
+          provider: 'elevenlabs',
+        }, { status: 502 });
       }
     }
 
