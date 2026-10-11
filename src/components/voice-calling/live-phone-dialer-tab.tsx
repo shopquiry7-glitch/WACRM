@@ -41,6 +41,7 @@ import {
   getCustomVoice,
   clearCustomVoice,
 } from "@/lib/voice-calling/custom-voice-db";
+import { ELEVENLABS_FREE_VOICES } from "@/components/voice-calling/custom-voice-tab";
 import { toast } from "sonner";
 
 interface LivePhoneDialerTabProps {
@@ -79,9 +80,10 @@ export function LivePhoneDialerTab({
     "Hello! Jeose Services se Maya baat kar rahi hoon. Hum aapke business ke liye Complete Website & Branding Package provide kar rahe hain for ONLY AED 299! Free .COM domain, 1 year hosting aur company profile include hai. Main aapki kis tarah madad kar sakti hoon?"
   );
 
-  // Custom Real Voice Audio State ("main voice data hon wo voice use kro")
+  // Custom Real Voice Audio State & Free Studio Voice selection
   const [customVoiceUrl, setCustomVoiceUrl] = useState<string | null>(null);
   const [customVoiceFileName, setCustomVoiceFileName] = useState<string | null>(null);
+  const [activeVoiceId, setActiveVoiceId] = useState<string>("EXAVITQu4vr4xnSDxMaL");
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
@@ -102,13 +104,28 @@ export function LivePhoneDialerTab({
   const durationTimerRef = useRef<NodeJS.Timeout | null>(null);
   const ringbackRef = useRef<{ stop: () => void } | null>(null);
 
+  // Select an ElevenLabs Free tier voice directly from dialer
+  const handleSelectDialerVoice = (voice: (typeof ELEVENLABS_FREE_VOICES)[0]) => {
+    setActiveVoiceId(voice.id);
+    setCustomVoiceFileName(voice.name);
+    localStorage.setItem("custom_maya_voice_id", voice.id);
+    localStorage.setItem("custom_maya_voice_name", voice.name);
+    localStorage.setItem("custom_maya_voice_provider", "elevenlabs");
+    toast.success(`Active Caller Voice: ${voice.name}! Maya will speak calls in this voice.`);
+  };
+
   // Load custom voice status on mount
   useEffect(() => {
-    getCustomVoice().then(({ url, name }) => {
-      if (url) {
-        setCustomVoiceUrl(url);
-        setCustomVoiceFileName(name || "Real Human Voice");
-      }
+    if (typeof window !== "undefined") {
+      const storedId = localStorage.getItem("custom_maya_voice_id");
+      const storedName = localStorage.getItem("custom_maya_voice_name");
+      if (storedId) setActiveVoiceId(storedId);
+      if (storedName) setCustomVoiceFileName(storedName);
+    }
+    getCustomVoice().then(({ url, name, voiceId }) => {
+      if (url) setCustomVoiceUrl(url);
+      if (name) setCustomVoiceFileName(name);
+      if (voiceId) setActiveVoiceId(voiceId);
     });
   }, []);
 
@@ -377,6 +394,7 @@ export function LivePhoneDialerTab({
         // Speak aloud Maya's voice using cloned voice synthesis
         if (inCallSpeaker) {
           speakText(customGreeting, {
+            voiceId: activeVoiceId,
             rate: 1.0,
             onEnd: () => {
               // Simulated client response in UAE / KSA
@@ -397,7 +415,7 @@ export function LivePhoneDialerTab({
                   };
                   setLiveTranscript((prev) => [...prev, agentReply]);
                   // Dynamic short response (does not restart the whole greeting audio!)
-                  speakText(agentReply.text);
+                  speakText(agentReply.text, { voiceId: activeVoiceId });
                 }, 1500);
               }, 2000);
             },
@@ -523,81 +541,94 @@ export function LivePhoneDialerTab({
         </div>
       </div>
 
-      {/* PROMINENT REAL VOICE ACTION BAR */}
-      <div className="rounded-2xl border-2 border-violet-500/40 bg-gradient-to-r from-violet-950/50 via-purple-900/25 to-card p-4 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className={`p-3 rounded-2xl ${customVoiceUrl ? "bg-emerald-500/20 text-emerald-400" : "bg-violet-500/20 text-violet-400"}`}>
-            <FileAudio className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="text-sm font-bold text-foreground flex items-center gap-2 flex-wrap">
-              <span>Maya&apos;s Active Voice:</span>
-              <span className="text-violet-300 font-semibold underline">
-                {customVoiceUrl ? (customVoiceFileName || "Custom Real Voice Audio") : "Maya Natural Indian Female"}
-              </span>
-              {customVoiceUrl ? (
-                <span className="bg-emerald-500/20 text-emerald-300 text-[11px] px-2 py-0.5 rounded-full font-bold">
-                  ✓ Real Human Voice Active
-                </span>
-              ) : (
-                <span className="bg-violet-500/20 text-violet-300 text-[11px] px-2 py-0.5 rounded-full font-bold">
-                  Natural AI Female
-                </span>
-              )}
+      {/* PROMINENT REAL VOICE & ELEVENLABS FREE PLAN VOICES ACTION BAR */}
+      <div className="rounded-2xl border-2 border-violet-500/40 bg-gradient-to-r from-violet-950/50 via-purple-900/25 to-card p-5 shadow-lg space-y-3.5">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-3 rounded-2xl ${customVoiceUrl || activeVoiceId ? "bg-emerald-500/20 text-emerald-400" : "bg-violet-500/20 text-violet-400"}`}>
+              <FileAudio className="h-6 w-6" />
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {customVoiceUrl
-                ? "Maya client se call par aapki cloned aawaz mein live Urdu + English mein baat karegi (poori recording nahi, sirf aawaz use hoti hai)."
-                : "Apni aawaz use karne ke liye Upload Voice (.mp3) dabayein ya Mic se direct record karein."}
-            </p>
+            <div>
+              <div className="text-sm font-bold text-foreground flex items-center gap-2 flex-wrap">
+                <span>Maya&apos;s Active Voice:</span>
+                <span className="text-emerald-300 font-extrabold underline">
+                  {customVoiceFileName || "Sarah (ElevenLabs Free Tier)"}
+                </span>
+                <span className="bg-emerald-500/20 text-emerald-300 text-[11px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  ElevenLabs Studio Active (10,000 Chars Free)
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Maya call par is aawaz mein Urdu + English bolegi. Niche diye gaye buttons se foran aawaz badlein:
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md transition cursor-pointer"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              <span>Upload Custom Audio</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={isRecordingAudio ? handleStopMicRecording : handleStartMicRecording}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs shadow-md transition cursor-pointer ${
+                isRecordingAudio
+                  ? "bg-rose-600 text-white animate-pulse"
+                  : "bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/25"
+              }`}
+            >
+              {isRecordingAudio ? <Square className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              <span>{isRecordingAudio ? `Stop (${recordingSeconds}s)` : "Record Mic"}</span>
+            </button>
+
+            {customVoiceUrl && (
+              <button
+                type="button"
+                onClick={handlePreviewCustomVoice}
+                disabled={isPlayingPreview}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500 hover:text-white text-xs font-bold transition cursor-pointer"
+              >
+                <Play className="h-3 w-3" />
+                <span>{isPlayingPreview ? "Playing..." : "Test Audio"}</span>
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md transition hover:scale-105 active:scale-95 cursor-pointer"
-          >
-            <Upload className="h-4 w-4" />
-            <span>Upload Real Voice (.mp3 / .wav)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={isRecordingAudio ? handleStopMicRecording : handleStartMicRecording}
-            className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer ${
-              isRecordingAudio
-                ? "bg-rose-600 text-white animate-pulse"
-                : "bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/25"
-            }`}
-          >
-            {isRecordingAudio ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            <span>{isRecordingAudio ? `Stop (${recordingSeconds}s)` : "Record with Mic"}</span>
-          </button>
-
-          {customVoiceUrl && (
-            <button
-              type="button"
-              onClick={handlePreviewCustomVoice}
-              disabled={isPlayingPreview}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500 hover:text-white text-xs font-bold transition cursor-pointer"
-            >
-              <Play className="h-3.5 w-3.5" />
-              <span>{isPlayingPreview ? "Playing..." : "Test Voice"}</span>
-            </button>
-          )}
-
-          {customVoiceUrl && (
-            <button
-              type="button"
-              onClick={handleResetToNaturalVoice}
-              className="p-2.5 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
-              title="Reset to natural voice"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </button>
-          )}
+        {/* 4 FREE ELEVENLABS VOICES QUICK SWITCHER */}
+        <div className="pt-2 border-t border-border/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+            <Sparkles className="h-4 w-4 text-violet-400" />
+            <span>Switch Voice (4 Free Female Voices):</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {ELEVENLABS_FREE_VOICES.map((v) => {
+              const isSelected = activeVoiceId === v.id || (!activeVoiceId && v.id === "EXAVITQu4vr4xnSDxMaL");
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => handleSelectDialerVoice(v)}
+                  className={`text-xs px-3.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    isSelected
+                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400"
+                      : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/80"
+                  }`}
+                >
+                  {isSelected && <CheckCircle2 className="h-3.5 w-3.5" />}
+                  <span>{v.name.split(" ")[0]}</span>
+                  <span className="text-[10px] opacity-80 font-normal">({v.tag.split(" ")[0]})</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

@@ -177,9 +177,9 @@ export default function VoiceCallingPage() {
           }`}
         >
           <Mic className="h-4 w-4 text-rose-300 animate-pulse" />
-          <span>🎙️ Upload Real Voice (.mp3 / Mic)</span>
+          <span>🎙️ Voice Studio &amp; 4 Free Voices</span>
           <span className="rounded-full bg-rose-500/30 text-rose-200 text-[10px] px-2 py-0.5 font-extrabold uppercase">
-            Active
+            Free Plan Active
           </span>
         </button>
 
