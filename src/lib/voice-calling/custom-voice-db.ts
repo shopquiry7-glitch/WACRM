@@ -184,9 +184,9 @@ export function getCustomVoiceSync(): ClonedVoiceRecord | null {
 
     cachedVoice = {
       dataUrl: effectiveUrl,
-      name: storedName || 'Real Human Voice Recording (AED 299 Pitch)',
-      voiceId: storedVoiceId || 'neural_custom_clone',
-      provider: storedProvider,
+      name: storedName || 'Maya ElevenLabs Studio Voice',
+      voiceId: storedVoiceId || 'EXAVITQu4vr4xnSDxMaL',
+      provider: storedProvider || 'elevenlabs',
       apiKey: storedApiKey,
       updatedAt: Date.now(),
     };
@@ -293,9 +293,9 @@ export async function getCustomVoice(): Promise<{
         return {
           url: data.url,
           name: voiceName,
-          voiceId: 'neural_custom_clone',
-          provider: 'neural',
-          apiKey: null,
+          voiceId: 'EXAVITQu4vr4xnSDxMaL',
+          provider: 'elevenlabs',
+          apiKey: DEFAULT_ELEVENLABS_KEY,
         };
       }
     }
@@ -303,21 +303,22 @@ export async function getCustomVoice(): Promise<{
     // ignore
   }
 
-  // Default fallback to real voice file
+  // Default fallback to ElevenLabs Studio Voice
   cachedVoice = {
     dataUrl: '/sounds/custom-maya-voice.webm',
-    name: 'Real Human Voice Recording (AED 299 Pitch)',
-    voiceId: 'neural_custom_clone',
-    provider: 'neural',
+    name: 'Maya (ElevenLabs Studio Voice)',
+    voiceId: 'EXAVITQu4vr4xnSDxMaL',
+    provider: 'elevenlabs',
+    apiKey: DEFAULT_ELEVENLABS_KEY,
     updatedAt: Date.now(),
   };
 
   return {
     url: '/sounds/custom-maya-voice.webm',
-    name: 'Real Human Voice Recording (AED 299 Pitch)',
-    voiceId: 'neural_custom_clone',
-    provider: 'neural',
-    apiKey: null,
+    name: 'Maya (ElevenLabs Studio Voice)',
+    voiceId: 'EXAVITQu4vr4xnSDxMaL',
+    provider: 'elevenlabs',
+    apiKey: DEFAULT_ELEVENLABS_KEY,
   };
 }
 

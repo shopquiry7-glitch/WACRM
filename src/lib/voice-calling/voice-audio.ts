@@ -1,4 +1,4 @@
-import { getCustomVoiceSync } from '@/lib/voice-calling/custom-voice-db';
+import { getCustomVoiceSync, DEFAULT_ELEVENLABS_KEY } from '@/lib/voice-calling/custom-voice-db';
 
 let currentAudio: HTMLAudioElement | null = null;
 
@@ -41,8 +41,12 @@ export function speakText(
   try {
     // 1. Retrieve persistent cloned voice settings
     const clonedRecord = getCustomVoiceSync();
-    const effectiveVoiceId = options?.voiceId || clonedRecord?.voiceId || 'neural_custom_clone';
-    const effectiveApiKey = options?.apiKey || clonedRecord?.apiKey || '';
+    const effectiveVoiceId =
+      options?.voiceId ||
+      (clonedRecord?.voiceId && clonedRecord.voiceId !== 'neural_custom_clone'
+        ? clonedRecord.voiceId
+        : 'EXAVITQu4vr4xnSDxMaL');
+    const effectiveApiKey = options?.apiKey || clonedRecord?.apiKey || DEFAULT_ELEVENLABS_KEY;
 
     // 2. Build dynamic audio URL (direct audio file if explicitly provided, else dynamic TTS)
     const audioUrl =

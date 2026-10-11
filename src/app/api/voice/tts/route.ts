@@ -124,16 +124,15 @@ async function handleSynthesize(
     process.env.ELEVENLABS_API_KEY ||
     '';
 
-  // 1. If voiceId is provided and we have an ElevenLabs API key, synthesize via ElevenLabs
-  if (
-    voiceId &&
-    voiceId !== 'neural_custom_clone' &&
-    voiceId !== 'default' &&
-    effectiveApiKey &&
-    !effectiveApiKey.includes('••••')
-  ) {
+  // 1. If we have an ElevenLabs API key, synthesize via ElevenLabs Multilingual
+  if (effectiveApiKey && !effectiveApiKey.includes('••••')) {
+    const effectiveVoiceId =
+      voiceId && voiceId !== 'neural_custom_clone' && voiceId !== 'default'
+        ? voiceId
+        : 'EXAVITQu4vr4xnSDxMaL';
+
     try {
-      const elUrl = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`;
+      const elUrl = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(effectiveVoiceId)}`;
       const elRes = await fetch(elUrl, {
         method: 'POST',
         headers: {
