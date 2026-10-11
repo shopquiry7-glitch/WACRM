@@ -35,7 +35,7 @@ import {
 import type { VoiceAgent, VoicePhoneNumber, VoiceCall } from "@/types/voice-calling";
 import { SUPPORTED_COUNTRIES, CountryPreset, formatE164, formatDisplayPhone } from "@/lib/voice-calling/phone-formatter";
 import { playDtmfTone, playRingbackTone } from "@/lib/voice-calling/dtmf-audio";
-import { speakText, stopSpeaking } from "@/lib/voice-calling/voice-audio";
+import { speakText, stopSpeaking, playSampleRecording } from "@/lib/voice-calling/voice-audio";
 import {
   saveCustomVoice,
   getCustomVoice,
@@ -201,20 +201,20 @@ export function LivePhoneDialerTab({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const toastId = toast.loading("Saving and activating your real voice...");
+    const toastId = toast.loading("Cloning and activating your real voice...");
     try {
-      const dataUrl = await saveCustomVoice(file, file.name);
-      setCustomVoiceUrl(dataUrl);
-      setCustomVoiceFileName(file.name);
+      const record = await saveCustomVoice(file, file.name);
+      setCustomVoiceUrl(record.dataUrl);
+      setCustomVoiceFileName(record.name);
 
       const formData = new FormData();
       formData.append("file", file);
-      fetch("/api/voice/custom-audio", {
+      fetch("/api/voice/clone", {
         method: "POST",
         body: formData,
       }).catch(() => {});
 
-      toast.success(`Real voice recording "${file.name}" is now active! All calls will speak in this voice.`, { id: toastId });
+      toast.success(`Real voice "${file.name}" cloned! Maya will speak live responses in this voice.`, { id: toastId });
     } catch {
       toast.error("Upload error. Please try again.", { id: toastId });
     }
@@ -243,20 +243,20 @@ export function LivePhoneDialerTab({
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         stream.getTracks().forEach((track) => track.stop());
 
-        const toastId = toast.loading("Saving your recorded voice as Maya's voice...");
+        const toastId = toast.loading("Cloning your recorded voice for Maya...");
         try {
-          const dataUrl = await saveCustomVoice(audioBlob, "Mic Recorded Real Voice");
-          setCustomVoiceUrl(dataUrl);
+          const record = await saveCustomVoice(audioBlob, "Mic Recorded Real Voice");
+          setCustomVoiceUrl(record.dataUrl);
           setCustomVoiceFileName("Mic Recorded Real Voice");
 
           const formData = new FormData();
           formData.append("file", audioBlob, "mic-recorded-voice.webm");
-          fetch("/api/voice/custom-audio", {
+          fetch("/api/voice/clone", {
             method: "POST",
             body: formData,
           }).catch(() => {});
 
-          toast.success("Your microphone voice recording is now active as Maya's voice!", { id: toastId });
+          toast.success("Aawaz successfully clone ho gayi! Maya calls mein is aawaz mein bolegi.", { id: toastId });
         } catch {
           toast.error("Audio save error", { id: toastId });
         }
@@ -286,15 +286,16 @@ export function LivePhoneDialerTab({
 
   // Play Preview of Custom Real Voice
   const handlePreviewCustomVoice = () => {
-    if (!customVoiceUrl) return;
+    if (!customVoiceUrl) {
+      toast.info("No custom voice uploaded yet. Please upload a voice file first.");
+      return;
+    }
     setIsPlayingPreview(true);
-    const audio = new Audio(customVoiceUrl);
-    audio.play();
-    audio.onended = () => setIsPlayingPreview(false);
-    audio.onerror = () => {
-      setIsPlayingPreview(false);
-      toast.error("Could not play audio file");
-    };
+    playSampleRecording(
+      customVoiceUrl,
+      () => setIsPlayingPreview(true),
+      () => setIsPlayingPreview(false)
+    );
   };
 
   // Reset Voice back to default
@@ -373,11 +374,11 @@ export function LivePhoneDialerTab({
         };
         setLiveTranscript([firstTurn]);
 
-        // Speak aloud Maya's voice (plays custom uploaded real voice or neural audio)
+        // Speak aloud Maya's voice: uses the user's uploaded real human voice for greeting/pitch!
         if (inCallSpeaker) {
           speakText(customGreeting, {
             rate: 1.0,
-            customAudioUrl: customVoiceUrl || undefined,
+            audioUrl: customVoiceUrl || undefined,
             onEnd: () => {
               // Simulated client response in UAE / KSA
               setTimeout(() => {
@@ -396,9 +397,8 @@ export function LivePhoneDialerTab({
                     timestamp: "00:30",
                   };
                   setLiveTranscript((prev) => [...prev, agentReply]);
-                  speakText(agentReply.text, {
-                    customAudioUrl: customVoiceUrl || undefined,
-                  });
+                  // Dynamic short response (does not restart the whole greeting audio!)
+                  speakText(agentReply.text);
                 }, 1500);
               }, 2000);
             },
@@ -548,7 +548,7 @@ export function LivePhoneDialerTab({
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {customVoiceUrl
-                ? "Client ko phone call par aapki real audio recording sunai degi."
+                ? "Maya client se call par aapki cloned aawaz mein live Urdu + English mein baat karegi (poori recording nahi, sirf aawaz use hoti hai)."
                 : "Apni aawaz use karne ke liye Upload Voice (.mp3) dabayein ya Mic se direct record karein."}
             </p>
           </div>
@@ -837,7 +837,7 @@ export function LivePhoneDialerTab({
             )}
 
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Aap apna real voice audio file yahan upload kar sakte hain ya mic se record kar sakte hain. Call ke waqt Maya aapki exact voice use karegi!
+              Aap apna real voice sample yahan upload ya record kar sakte hain. Maya sirf aapki aawaz clone karegi aur call ke waqt har jumla usi aawaz mein dynamically bolegi!
             </p>
           </div>
 

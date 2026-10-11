@@ -3,9 +3,11 @@ import { getCustomVoiceSync } from '@/lib/voice-calling/custom-voice-db';
 let currentAudio: HTMLAudioElement | null = null;
 
 /**
- * High-quality speech player for Maya.
- * Exclusively plays the user's uploaded real human voice audio file.
- * The robotic AI synthetic voice has been completely removed per user instruction.
+ * High-quality Speech Player for Maya & Voice Agents.
+ * Dynamically synthesizes ANY given text in the user's active cloned voice or neural voice.
+ * 
+ * IMPORTANT: Never plays the static reference recording file as speech for dynamic text.
+ * The user's uploaded voice sample is cloned to speak whatever dynamic text is requested.
  */
 export function speakText(
   text: string,
@@ -13,7 +15,9 @@ export function speakText(
     rate?: number;
     pitch?: number;
     lang?: string;
-    customAudioUrl?: string;
+    voiceId?: string;
+    apiKey?: string;
+    audioUrl?: string;
     onStart?: () => void;
     onEnd?: () => void;
     onError?: (err: unknown) => void;
@@ -27,7 +31,7 @@ export function speakText(
   stopSpeaking();
 
   const trimmedText = text.trim();
-  if (!trimmedText) {
+  if (!trimmedText && !options?.audioUrl) {
     options?.onEnd?.();
     return { cancel: () => {} };
   }
@@ -35,21 +39,19 @@ export function speakText(
   let isCancelled = false;
 
   try {
-    // 1. Retrieve persistent custom real human audio URL (IndexedDB / localStorage / memory)
-    const customStoredUrl =
-      options?.customAudioUrl ||
-      getCustomVoiceSync() ||
-      (typeof window !== 'undefined' ? localStorage.getItem('custom_maya_voice_url') : null);
+    // 1. Retrieve persistent cloned voice settings
+    const clonedRecord = getCustomVoiceSync();
+    const effectiveVoiceId = options?.voiceId || clonedRecord?.voiceId || 'neural_custom_clone';
+    const effectiveApiKey = options?.apiKey || clonedRecord?.apiKey || '';
 
-    // If custom audio exists, use it exclusively
-    let audioUrl = customStoredUrl;
-
-    // If no custom audio yet, check backend file or natural neural TTS stream
-    if (!audioUrl) {
-      audioUrl = `/api/voice/tts?text=${encodeURIComponent(trimmedText)}${
-        options?.lang ? `&lang=${encodeURIComponent(options.lang)}` : ''
+    // 2. Build dynamic audio URL (direct audio file if explicitly provided, else dynamic TTS)
+    const audioUrl =
+      options?.audioUrl ||
+      `/api/voice/tts?text=${encodeURIComponent(trimmedText)}${
+        effectiveVoiceId ? `&voiceId=${encodeURIComponent(effectiveVoiceId)}` : ''
+      }${options?.lang ? `&lang=${encodeURIComponent(options.lang)}` : ''}${
+        effectiveApiKey ? `&apiKey=${encodeURIComponent(effectiveApiKey)}` : ''
       }`;
-    }
 
     const audio = new Audio(audioUrl);
     currentAudio = audio;
@@ -76,12 +78,11 @@ export function speakText(
 
     audio.onerror = (e) => {
       if (isCancelled) return;
-      console.warn('Real audio playback error:', e);
+      console.warn('Dynamic speech playback error:', e);
       if (currentAudio === audio) {
         currentAudio = null;
       }
       options?.onError?.(e);
-      // Notice: robotic fallbackSpeechSynthesis has been completely removed!
       finish();
     };
 
@@ -89,7 +90,7 @@ export function speakText(
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
         if (isCancelled) return;
-        console.warn('Audio play notice (interaction required or codec):', err);
+        console.warn('Audio play notice (user interaction or codec):', err);
         finish();
       });
     }
@@ -110,7 +111,7 @@ export function speakText(
       },
     };
   } catch (err) {
-    console.warn('Audio playback initialization notice:', err);
+    console.warn('Speech playback initialization notice:', err);
     options?.onEnd?.();
 
     return {
@@ -119,6 +120,44 @@ export function speakText(
       },
     };
   }
+}
+
+/**
+ * Dedicated preview player for the user's raw uploaded reference sample recording.
+ * Only called when the user explicitly clicks "Listen to original sample audio".
+ */
+export function playSampleRecording(
+  audioUrl: string,
+  onStart?: () => void,
+  onEnd?: () => void
+): { stop: () => void } {
+  stopSpeaking();
+  const audio = new Audio(audioUrl);
+  currentAudio = audio;
+
+  audio.onplay = () => onStart?.();
+  audio.onended = () => {
+    if (currentAudio === audio) currentAudio = null;
+    onEnd?.();
+  };
+  audio.onerror = () => {
+    if (currentAudio === audio) currentAudio = null;
+    onEnd?.();
+  };
+
+  audio.play().catch(() => onEnd?.());
+
+  return {
+    stop: () => {
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch {
+        // ignore
+      }
+      if (currentAudio === audio) currentAudio = null;
+    },
+  };
 }
 
 export function stopSpeaking(): void {

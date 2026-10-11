@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 
 /**
- * High-fidelity Natural Indian Female Voice Audio Streamer
- * Generates clear, smooth, natural audio speaking Urdu and English.
- * Returns native MP3 audio buffer directly playable by HTML5 Audio.
+ * High-fidelity Dynamic Text-To-Speech (TTS) Engine
+ * Synthesizes dynamic text into human speech using:
+ * 1. ElevenLabs Cloned Voice (when cloned voice ID and API key are available)
+ * 2. Natural Neural Multilingual TTS (Urdu, Hindi, Indian English)
+ * 
+ * NOTE: Never returns static audio files. Always generates speech for the given text!
  */
 
 // Helper to chunk text for natural human cadence (max ~180 chars per phrase)
@@ -58,12 +59,12 @@ function detectBestVoiceLang(text: string, requestedLang?: string | null): strin
   }
 
   const lower = text.toLowerCase();
-  // Common Roman Urdu / Hindi markers spoken by Indian/Pakistani receptionists
+  // Common Roman Urdu / Hindi markers spoken by Pakistani/Indian receptionists
   const urduHindiKeywords = [
     'mein', 'aap', 'aapka', 'aapki', 'madad', 'bol', 'rahi', 'hoon', 'hai', 'hain',
     'shukriya', 'bilkul', 'theek', 'ji', 'kripya', 'swagat', 'khushamdeed', 'namaste',
     'salam', 'assalam', 'kaise', 'bataiye', 'sakti', 'sakta', 'services', 'karna',
-    'bhej', 'kal', 'subah', 'dopahar', 'waqt', 'samajh', 'tarah', 'chahiye'
+    'bhej', 'kal', 'subah', 'dopahar', 'waqt', 'samajh', 'tarah', 'chahiye', 'sirf'
   ];
 
   const hasUrduHindiWords = urduHindiKeywords.some((w) => {
@@ -71,12 +72,10 @@ function detectBestVoiceLang(text: string, requestedLang?: string | null): strin
     return regex.test(lower);
   });
 
-  // Google 'hi' (Hindi/Urdu female) produces extremely clear and smooth pronunciation of romanized Hindustani/Urdu
   if (hasUrduHindiWords) {
     return 'hi';
   }
 
-  // Pure English defaults to en-IN for natural Indian English female cadence
   return 'en-IN';
 }
 
@@ -93,7 +92,6 @@ async function fetchAudioChunk(textChunk: string, targetLang: string): Promise<U
         Accept: 'audio/mpeg,audio/*;q=0.9,*/*;q=0.8',
         Referer: 'https://translate.google.com/',
       },
-      // Cache-friendly
       next: { revalidate: 86400 },
     });
 
@@ -110,76 +108,138 @@ async function fetchAudioChunk(textChunk: string, targetLang: string): Promise<U
   }
 }
 
+async function handleSynthesize(
+  text: string,
+  voiceId?: string | null,
+  langParam?: string | null,
+  apiKeyParam?: string | null
+): Promise<Response> {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return NextResponse.json({ error: 'Text parameter is required' }, { status: 400 });
+  }
+
+  const effectiveApiKey =
+    apiKeyParam ||
+    process.env.ELEVENLABS_API_KEY ||
+    '';
+
+  // 1. If voiceId is provided and we have an ElevenLabs API key, synthesize via ElevenLabs
+  if (
+    voiceId &&
+    voiceId !== 'neural_custom_clone' &&
+    voiceId !== 'default' &&
+    effectiveApiKey &&
+    !effectiveApiKey.includes('••••')
+  ) {
+    try {
+      const elUrl = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`;
+      const elRes = await fetch(elUrl, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': effectiveApiKey,
+          'Content-Type': 'application/json',
+          Accept: 'audio/mpeg',
+        },
+        body: JSON.stringify({
+          text: trimmed,
+          model_id: 'eleven_multilingual_v2',
+          voice_settings: {
+            stability: 0.55,
+            similarity_boost: 0.85,
+            style: 0.1,
+            use_speaker_boost: true,
+          },
+        }),
+      });
+
+      if (elRes.ok) {
+        const audioBuffer = await elRes.arrayBuffer();
+        return new Response(audioBuffer, {
+          status: 200,
+          headers: {
+            'Content-Type': 'audio/mpeg',
+            'Content-Length': audioBuffer.byteLength.toString(),
+            'Cache-Control': 'no-cache',
+            'X-Voice-Engine': 'ElevenLabs-Clone',
+          },
+        });
+      } else {
+        const errJson = await elRes.text();
+        console.warn('ElevenLabs TTS failed, falling back to neural:', errJson);
+      }
+    } catch (elErr) {
+      console.warn('ElevenLabs fetch failed, falling back to neural:', elErr);
+    }
+  }
+
+  // 2. High-fidelity Neural Multilingual Speech Synthesizer fallback
+  const lang = detectBestVoiceLang(trimmed, langParam);
+  const chunks = chunkText(trimmed, 180);
+
+  const audioBuffers: Uint8Array[] = [];
+  for (const chunk of chunks) {
+    const audio = await fetchAudioChunk(chunk, lang);
+    if (audio && audio.length > 0) {
+      audioBuffers.push(audio);
+    }
+  }
+
+  if (audioBuffers.length === 0) {
+    return NextResponse.json({ error: 'Failed to generate voice audio' }, { status: 502 });
+  }
+
+  const totalBytes = audioBuffers.reduce((sum, b) => sum + b.length, 0);
+  const merged = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const buf of audioBuffers) {
+    merged.set(buf, offset);
+    offset += buf.length;
+  }
+
+  return new Response(merged, {
+    status: 200,
+    headers: {
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': String(totalBytes),
+      'Cache-Control': 'public, max-age=604800, immutable',
+      'Accept-Ranges': 'bytes',
+      'X-Voice-Engine': 'Neural-Multilingual',
+    },
+  });
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const text = searchParams.get('text')?.trim();
-    const langParam = searchParams.get('lang');
+    const text = searchParams.get('text');
+    const voiceId = searchParams.get('voiceId');
+    const lang = searchParams.get('lang');
+    const apiKey = searchParams.get('apiKey') || req.headers.get('x-elevenlabs-key');
 
     if (!text) {
       return NextResponse.json({ error: 'Text query parameter is required' }, { status: 400 });
     }
 
-    // If custom real voice file exists on server, serve it directly
-    try {
-      const customPath = path.join(process.cwd(), 'public', 'sounds', 'custom-maya-voice.mp3');
-      if (fs.existsSync(customPath)) {
-        const stats = fs.statSync(customPath);
-        if (stats.size > 1000) {
-          const fileBuffer = fs.readFileSync(customPath);
-          return new NextResponse(fileBuffer, {
-            status: 200,
-            headers: {
-              'Content-Type': 'audio/mpeg',
-              'Content-Length': fileBuffer.length.toString(),
-              'Cache-Control': 'public, max-age=31536000, immutable',
-            },
-          });
-        }
-      }
-    } catch {
-      // proceed with dynamic stream
-    }
-
-    // Determine optimal voice language
-    const lang = detectBestVoiceLang(text, langParam);
-
-    // Break into human conversational chunks
-    const chunks = chunkText(text, 180);
-
-    // Fetch chunks sequentially or in small parallel batches
-    const audioBuffers: Uint8Array[] = [];
-    for (const chunk of chunks) {
-      const audio = await fetchAudioChunk(chunk, lang);
-      if (audio && audio.length > 0) {
-        audioBuffers.push(audio);
-      }
-    }
-
-    if (audioBuffers.length === 0) {
-      return NextResponse.json({ error: 'Failed to generate voice audio' }, { status: 502 });
-    }
-
-    // Concatenate MP3 frames
-    const totalBytes = audioBuffers.reduce((sum, b) => sum + b.length, 0);
-    const merged = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (const buf of audioBuffers) {
-      merged.set(buf, offset);
-      offset += buf.length;
-    }
-
-    return new Response(merged, {
-      status: 200,
-      headers: {
-        'Content-Type': 'audio/mpeg',
-        'Content-Length': String(totalBytes),
-        'Cache-Control': 'public, max-age=604800, immutable',
-        'Accept-Ranges': 'bytes',
-      },
-    });
+    return await handleSynthesize(text, voiceId, lang, apiKey);
   } catch (error) {
-    console.error('Error in /api/voice/tts:', error);
+    console.error('Error in GET /api/voice/tts:', error);
+    return NextResponse.json({ error: 'Internal TTS error' }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { text, voiceId, lang, apiKey } = body;
+
+    if (!text) {
+      return NextResponse.json({ error: 'Text is required in body' }, { status: 400 });
+    }
+
+    return await handleSynthesize(text, voiceId, lang, apiKey);
+  } catch (error) {
+    console.error('Error in POST /api/voice/tts:', error);
     return NextResponse.json({ error: 'Internal TTS error' }, { status: 500 });
   }
 }

@@ -1,16 +1,24 @@
 /**
- * Persistent Real Voice Storage Engine using IndexedDB + LocalStorage + Memory
- * Ensures user's uploaded real audio (.mp3 / .wav) is permanently stored across
- * page reloads, browser tabs, and serverless environments (Vercel) without size limits.
+ * Persistent Real Voice & Cloned Voice Storage Engine
+ * Stores user's uploaded voice sample (.mp3 / .wav), cloned voice IDs (ElevenLabs / Neural),
+ * and audio settings across page reloads and browser sessions.
  */
 
 const DB_NAME = 'jeose_voice_calling_db';
 const STORE_NAME = 'maya_custom_voice_store';
 const VOICE_KEY = 'active_maya_voice';
 
-// In-memory audio URL cache for zero-latency synchronous access
-let cachedVoiceUrl: string | null = null;
-let cachedVoiceName: string | null = null;
+export interface ClonedVoiceRecord {
+  dataUrl: string; // The original audio sample for preview
+  name: string;
+  voiceId?: string; // Cloned voice ID (e.g. ElevenLabs voice_id)
+  provider?: 'elevenlabs' | 'neural';
+  apiKey?: string;
+  updatedAt: number;
+}
+
+// In-memory cache for synchronous instant access
+let cachedVoice: ClonedVoiceRecord | null = null;
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -19,7 +27,7 @@ function openDB(): Promise<IDBDatabase> {
       return;
     }
 
-    const request = window.indexedDB.open(DB_NAME, 1);
+    const request = window.indexedDB.open(DB_NAME, 2);
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
@@ -52,12 +60,17 @@ export function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 /**
- * Saves uploaded audio as the permanent Maya voice
+ * Saves uploaded audio and registers/clones the voice
  */
 export async function saveCustomVoice(
   fileOrData: File | Blob | string,
-  filename?: string
-): Promise<string> {
+  filename?: string,
+  options?: {
+    apiKey?: string;
+    voiceId?: string;
+    provider?: 'elevenlabs' | 'neural';
+  }
+): Promise<ClonedVoiceRecord> {
   let dataUrl: string;
 
   if (typeof fileOrData === 'string') {
@@ -67,16 +80,54 @@ export async function saveCustomVoice(
   }
 
   const voiceName = filename || 'Real Human Voice Recording';
-  cachedVoiceUrl = dataUrl;
-  cachedVoiceName = voiceName;
+  let voiceId = options?.voiceId || 'neural_custom_clone';
+  let provider = options?.provider || 'neural';
+  const apiKey = options?.apiKey || (typeof window !== 'undefined' ? localStorage.getItem('custom_maya_elevenlabs_key') || '' : '');
 
-  // 1. Save in IndexedDB (handles any file size up to 100MB+)
+  // If no voiceId passed but we have an API key, attempt voice cloning via backend
+  if (!options?.voiceId) {
+    try {
+      const res = await fetch('/api/voice/clone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base64Audio: dataUrl,
+          fileName: voiceName,
+          apiKey: apiKey || undefined,
+          voiceName: `Maya (${voiceName})`,
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.voiceId) {
+          voiceId = json.voiceId;
+          provider = json.provider || provider;
+        }
+      }
+    } catch (cloneErr) {
+      console.warn('Backend voice clone notice:', cloneErr);
+    }
+  }
+
+  const record: ClonedVoiceRecord = {
+    dataUrl,
+    name: voiceName,
+    voiceId,
+    provider,
+    apiKey,
+    updatedAt: Date.now(),
+  };
+
+  cachedVoice = record;
+
+  // 1. Save in IndexedDB
   try {
     const db = await openDB();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
-      const req = store.put({ dataUrl, name: voiceName, updatedAt: Date.now() }, VOICE_KEY);
+      const req = store.put(record, VOICE_KEY);
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
     });
@@ -84,7 +135,7 @@ export async function saveCustomVoice(
     console.warn('IndexedDB save failed:', err);
   }
 
-  // 2. Save in localStorage for fast sync access (if under 3.5MB)
+  // 2. Save in localStorage
   if (typeof window !== 'undefined') {
     try {
       if (dataUrl.length < 3.5 * 1024 * 1024) {
@@ -93,27 +144,43 @@ export async function saveCustomVoice(
         localStorage.setItem('custom_maya_voice_url', 'indexeddb:active_maya_voice');
       }
       localStorage.setItem('custom_maya_voice_name', voiceName);
-      localStorage.setItem('maya_voice_mode', 'real_human_voice');
+      localStorage.setItem('custom_maya_voice_id', voiceId);
+      localStorage.setItem('custom_maya_voice_provider', provider);
+      if (apiKey) {
+        localStorage.setItem('custom_maya_elevenlabs_key', apiKey);
+      }
+      localStorage.setItem('maya_voice_mode', 'real_cloned_voice');
     } catch {
-      // localStorage quota exceeded, IndexedDB is already saved
+      // quota fallback handled by IndexedDB
     }
   }
 
-  return dataUrl;
+  return record;
 }
 
 /**
- * Synchronously retrieves custom voice URL from memory or localStorage.
- * Used by speakText() to immediately play voice without delay.
+ * Synchronously retrieves custom cloned voice info from memory or localStorage.
  */
-export function getCustomVoiceSync(): string | null {
-  if (cachedVoiceUrl) return cachedVoiceUrl;
+export function getCustomVoiceSync(): ClonedVoiceRecord | null {
+  if (cachedVoice) return cachedVoice;
 
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('custom_maya_voice_url');
-    if (stored && !stored.startsWith('indexeddb:')) {
-      cachedVoiceUrl = stored;
-      return stored;
+    const storedUrl = localStorage.getItem('custom_maya_voice_url');
+    const storedName = localStorage.getItem('custom_maya_voice_name');
+    const storedVoiceId = localStorage.getItem('custom_maya_voice_id');
+    const storedProvider = (localStorage.getItem('custom_maya_voice_provider') as 'elevenlabs' | 'neural') || 'neural';
+    const storedApiKey = localStorage.getItem('custom_maya_elevenlabs_key') || '';
+
+    if (storedUrl || storedVoiceId) {
+      cachedVoice = {
+        dataUrl: storedUrl && !storedUrl.startsWith('indexeddb:') ? storedUrl : '',
+        name: storedName || 'Real Human Voice',
+        voiceId: storedVoiceId || 'neural_custom_clone',
+        provider: storedProvider,
+        apiKey: storedApiKey,
+        updatedAt: Date.now(),
+      };
+      return cachedVoice;
     }
   }
 
@@ -123,27 +190,54 @@ export function getCustomVoiceSync(): string | null {
 /**
  * Asynchronously loads custom voice from IndexedDB or Backend
  */
-export async function getCustomVoice(): Promise<{ url: string | null; name: string | null }> {
-  // Check memory
-  if (cachedVoiceUrl) {
-    return { url: cachedVoiceUrl, name: cachedVoiceName || 'Real Human Voice' };
+export async function getCustomVoice(): Promise<{
+  url: string | null;
+  name: string | null;
+  voiceId: string | null;
+  provider: 'elevenlabs' | 'neural' | null;
+  apiKey: string | null;
+}> {
+  if (cachedVoice) {
+    return {
+      url: cachedVoice.dataUrl || null,
+      name: cachedVoice.name || null,
+      voiceId: cachedVoice.voiceId || null,
+      provider: cachedVoice.provider || null,
+      apiKey: cachedVoice.apiKey || null,
+    };
   }
 
-  // Check localStorage
+  // Check localStorage first
   if (typeof window !== 'undefined') {
     const storedUrl = localStorage.getItem('custom_maya_voice_url');
     const storedName = localStorage.getItem('custom_maya_voice_name');
+    const storedVoiceId = localStorage.getItem('custom_maya_voice_id');
+    const storedProvider = (localStorage.getItem('custom_maya_voice_provider') as 'elevenlabs' | 'neural') || null;
+    const storedApiKey = localStorage.getItem('custom_maya_elevenlabs_key') || null;
+
     if (storedUrl && !storedUrl.startsWith('indexeddb:')) {
-      cachedVoiceUrl = storedUrl;
-      cachedVoiceName = storedName;
-      return { url: storedUrl, name: storedName };
+      cachedVoice = {
+        dataUrl: storedUrl,
+        name: storedName || 'Real Human Voice',
+        voiceId: storedVoiceId || undefined,
+        provider: storedProvider || 'neural',
+        apiKey: storedApiKey || undefined,
+        updatedAt: Date.now(),
+      };
+      return {
+        url: storedUrl,
+        name: storedName,
+        voiceId: storedVoiceId,
+        provider: storedProvider,
+        apiKey: storedApiKey,
+      };
     }
   }
 
   // Check IndexedDB
   try {
     const db = await openDB();
-    const item = await new Promise<{ dataUrl: string; name: string } | null>((resolve, reject) => {
+    const item = await new Promise<ClonedVoiceRecord | null>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
       const req = store.get(VOICE_KEY);
@@ -151,10 +245,15 @@ export async function getCustomVoice(): Promise<{ url: string | null; name: stri
       req.onerror = () => reject(req.error);
     });
 
-    if (item && item.dataUrl) {
-      cachedVoiceUrl = item.dataUrl;
-      cachedVoiceName = item.name;
-      return { url: item.dataUrl, name: item.name };
+    if (item) {
+      cachedVoice = item;
+      return {
+        url: item.dataUrl || null,
+        name: item.name || null,
+        voiceId: item.voiceId || null,
+        provider: item.provider || null,
+        apiKey: item.apiKey || null,
+      };
     }
   } catch (err) {
     console.warn('IndexedDB lookup failed:', err);
@@ -166,28 +265,56 @@ export async function getCustomVoice(): Promise<{ url: string | null; name: stri
     if (res.ok) {
       const data = await res.json();
       if (data.hasCustomVoice && data.url) {
-        cachedVoiceUrl = data.url;
-        cachedVoiceName = 'custom-maya-voice.mp3';
-        return { url: data.url, name: 'custom-maya-voice.mp3' };
+        cachedVoice = {
+          dataUrl: data.url,
+          name: 'custom-maya-voice.mp3',
+          voiceId: 'neural_custom_clone',
+          provider: 'neural',
+          updatedAt: Date.now(),
+        };
+        return {
+          url: data.url,
+          name: 'custom-maya-voice.mp3',
+          voiceId: 'neural_custom_clone',
+          provider: 'neural',
+          apiKey: null,
+        };
       }
     }
   } catch {
     // ignore
   }
 
-  return { url: null, name: null };
+  return { url: null, name: null, voiceId: null, provider: null, apiKey: null };
+}
+
+/**
+ * Saves ElevenLabs API key in storage
+ */
+export function saveElevenLabsApiKey(key: string): void {
+  if (typeof window !== 'undefined') {
+    if (key) {
+      localStorage.setItem('custom_maya_elevenlabs_key', key);
+    } else {
+      localStorage.removeItem('custom_maya_elevenlabs_key');
+    }
+  }
+  if (cachedVoice) {
+    cachedVoice.apiKey = key;
+  }
 }
 
 /**
  * Deletes custom voice and resets to default
  */
 export async function clearCustomVoice(): Promise<void> {
-  cachedVoiceUrl = null;
-  cachedVoiceName = null;
+  cachedVoice = null;
 
   if (typeof window !== 'undefined') {
     localStorage.removeItem('custom_maya_voice_url');
     localStorage.removeItem('custom_maya_voice_name');
+    localStorage.removeItem('custom_maya_voice_id');
+    localStorage.removeItem('custom_maya_voice_provider');
     localStorage.removeItem('maya_voice_mode');
   }
 

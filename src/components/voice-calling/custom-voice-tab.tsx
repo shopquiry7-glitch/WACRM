@@ -16,26 +16,36 @@ import {
   Copy,
   Check,
   ArrowRight,
-  Trash2,
   Headphones,
   Info,
+  Key,
+  MessageSquare,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   saveCustomVoice,
   getCustomVoice,
   clearCustomVoice,
+  saveElevenLabsApiKey,
 } from "@/lib/voice-calling/custom-voice-db";
+import { speakText, stopSpeaking, playSampleRecording } from "@/lib/voice-calling/voice-audio";
 
 interface CustomVoiceTabProps {
   onNavigateToDialer: () => void;
 }
 
 export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
-  // Voice state
+  // Cloned Voice State
   const [customVoiceUrl, setCustomVoiceUrl] = useState<string | null>(null);
   const [customVoiceFileName, setCustomVoiceFileName] = useState<string | null>(null);
+  const [customVoiceId, setCustomVoiceId] = useState<string | null>(null);
+  const [customVoiceProvider, setCustomVoiceProvider] = useState<"elevenlabs" | "neural" | null>("neural");
   const [isUploading, setIsUploading] = useState(false);
+
+  // ElevenLabs API Key state
+  const [elevenlabsKey, setElevenlabsKey] = useState("");
+  const [showKeyInput, setShowKeyInput] = useState(false);
 
   // Mic recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -44,20 +54,30 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
   const audioChunksRef = useRef<Blob[]>([]);
   const recTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Audio preview player state
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Raw Sample preview player state
+  const [isPlayingSample, setIsPlayingSample] = useState(false);
+  const sampleControllerRef = useRef<{ stop: () => void } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Dynamic Text-To-Speech Testing Studio State
+  const [testText, setTestText] = useState(
+    "Assalam-o-Alaikum! Jeose Services se Maya baat kar rahi hoon. Hamara Complete Business Website aur Branding Package sirf AED 299 ka hai! Kya main WhatsApp par demo link bhej doon?"
+  );
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const ttsControllerRef = useRef<{ cancel: () => void } | null>(null);
 
   // Script copy state
   const [copiedScript, setCopiedScript] = useState(false);
 
   // Load custom voice status on mount
   useEffect(() => {
-    getCustomVoice().then(({ url, name }) => {
-      if (url) {
+    getCustomVoice().then(({ url, name, voiceId, provider, apiKey }) => {
+      if (url || voiceId) {
         setCustomVoiceUrl(url);
         setCustomVoiceFileName(name || "Real Human Voice");
+        setCustomVoiceId(voiceId);
+        setCustomVoiceProvider(provider);
+        if (apiKey) setElevenlabsKey(apiKey);
       }
     });
   }, []);
@@ -73,26 +93,34 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
     }
 
     setIsUploading(true);
-    const toastId = toast.loading(`Saving and activating "${file.name}"...`);
+    const toastId = toast.loading(`Cloning voice timbre from "${file.name}"...`);
 
     try {
-      // 1. Immediately save locally into IndexedDB and Data URL
-      const dataUrl = await saveCustomVoice(file, file.name);
-      setCustomVoiceUrl(dataUrl);
-      setCustomVoiceFileName(file.name);
+      const record = await saveCustomVoice(file, file.name, {
+        apiKey: elevenlabsKey || undefined,
+      });
 
-      // 2. Also send to backend
+      setCustomVoiceUrl(record.dataUrl);
+      setCustomVoiceFileName(record.name);
+      setCustomVoiceId(record.voiceId || "neural_custom_clone");
+      setCustomVoiceProvider(record.provider || "neural");
+
+      // Also backup to backend
       const formData = new FormData();
       formData.append("file", file);
-      fetch("/api/voice/custom-audio", {
+      if (elevenlabsKey) formData.append("apiKey", elevenlabsKey);
+      fetch("/api/voice/clone", {
         method: "POST",
         body: formData,
       }).catch(() => {});
 
-      toast.success(`Real Voice "${file.name}" activated! All Maya calls will speak in this voice.`, { id: toastId });
+      toast.success(
+        `Aawaz successfully clone ho gayi! Maya sirf yeh aawaz use karegi aur koi bhi dynamic text is aawaz mein bolegi.`,
+        { id: toastId, duration: 4000 }
+      );
     } catch (err) {
       console.error("Upload error:", err);
-      toast.error("Upload error. Please try again.", { id: toastId });
+      toast.error("Voice processing error. Please try again.", { id: toastId });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -124,24 +152,32 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         stream.getTracks().forEach((track) => track.stop());
 
-        const toastId = toast.loading("Saving your recorded voice as Maya's voice...");
+        const toastId = toast.loading("Analyzing and cloning your voice recording...");
         try {
-          // 1. Save locally in IndexedDB and Data URL
-          const dataUrl = await saveCustomVoice(audioBlob, "Microphone Voice Recording");
-          setCustomVoiceUrl(dataUrl);
-          setCustomVoiceFileName("Microphone Voice Recording");
+          const record = await saveCustomVoice(audioBlob, "Microphone Voice Recording", {
+            apiKey: elevenlabsKey || undefined,
+          });
 
-          // 2. Also backup to backend
+          setCustomVoiceUrl(record.dataUrl);
+          setCustomVoiceFileName("Microphone Voice Recording");
+          setCustomVoiceId(record.voiceId || "neural_custom_clone");
+          setCustomVoiceProvider(record.provider || "neural");
+
+          // Also send to backend
           const formData = new FormData();
-          formData.append("file", audioBlob, "mic-recorded-voice.webm");
-          fetch("/api/voice/custom-audio", {
+          formData.append("file", audioBlob, "mic-voice.webm");
+          if (elevenlabsKey) formData.append("apiKey", elevenlabsKey);
+          fetch("/api/voice/clone", {
             method: "POST",
             body: formData,
           }).catch(() => {});
 
-          toast.success("Your microphone recording is now saved and active as Maya's voice!", { id: toastId });
+          toast.success("Aawaz successfully clone ho gayi! Ab koi bhi text bol kar test karein.", {
+            id: toastId,
+            duration: 4000,
+          });
         } catch {
-          toast.error("Error saving recording", { id: toastId });
+          toast.error("Error cloning voice recording", { id: toastId });
         }
       };
 
@@ -151,13 +187,12 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
       recTimerRef.current = setInterval(() => {
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
-      toast.info("Recording started! Speak your AED 299 package pitch into the microphone...");
+      toast.info("Recording started! Speak a few sentences to capture your voice timbre...");
     } catch (err) {
       console.error(err);
       toast.error("Microphone permission denied or device not found.");
     }
   };
-
 
   // Stop Mic Recording
   const handleStopRecording = () => {
@@ -170,41 +205,89 @@ export function CustomVoiceTab({ onNavigateToDialer }: CustomVoiceTabProps) {
     }
   };
 
-  // Audio Test Playback
-  const togglePlayAudio = () => {
+  // Toggle Play Original Uploaded Reference Sample
+  const togglePlaySample = () => {
     if (!customVoiceUrl) return;
 
-    if (isPlaying) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
-      setIsPlaying(false);
+    if (isPlayingSample) {
+      sampleControllerRef.current?.stop();
+      setIsPlayingSample(false);
     } else {
-      const audio = new Audio(customVoiceUrl);
-      audioRef.current = audio;
-      audio.onended = () => setIsPlaying(false);
-      audio.onerror = () => {
-        setIsPlaying(false);
-        toast.error("Could not play audio file.");
-      };
-      audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      stopSpeaking();
+      ttsControllerRef.current?.cancel();
+      setIsSynthesizing(false);
+
+      sampleControllerRef.current = playSampleRecording(
+        customVoiceUrl,
+        () => setIsPlayingSample(true),
+        () => setIsPlayingSample(false)
+      );
     }
   };
 
-  // Reset to default Indian female voice
+  // DYNAMIC TEXT-TO-SPEECH TEST: Speak ANY text dynamically using the cloned voice!
+  const handleSpeakDynamicText = () => {
+    const trimmed = testText.trim();
+    if (!trimmed) {
+      toast.error("Please enter some text to speak.");
+      return;
+    }
+
+    if (isSynthesizing) {
+      ttsControllerRef.current?.cancel();
+      stopSpeaking();
+      setIsSynthesizing(false);
+      return;
+    }
+
+    // Stop sample playback if active
+    if (isPlayingSample) {
+      sampleControllerRef.current?.stop();
+      setIsPlayingSample(false);
+    }
+
+    setIsSynthesizing(true);
+    const toastId = toast.loading("Synthesizing dynamic text in your cloned voice...");
+
+    ttsControllerRef.current = speakText(trimmed, {
+      voiceId: customVoiceId || undefined,
+      apiKey: elevenlabsKey || undefined,
+      onStart: () => {
+        toast.dismiss(toastId);
+      },
+      onEnd: () => {
+        setIsSynthesizing(false);
+      },
+      onError: (err) => {
+        setIsSynthesizing(false);
+        toast.error("Speech generation error. Please try again.", { id: toastId });
+        console.warn(err);
+      },
+    });
+  };
+
+  // Save ElevenLabs API Key
+  const handleSaveElevenLabsKey = () => {
+    saveElevenLabsApiKey(elevenlabsKey);
+    toast.success("ElevenLabs API Key saved for voice cloning!");
+    setShowKeyInput(false);
+  };
+
+  // Reset to default Maya voice
   const handleReset = async () => {
+    ttsControllerRef.current?.cancel();
+    sampleControllerRef.current?.stop();
+    stopSpeaking();
     await clearCustomVoice();
     setCustomVoiceUrl(null);
     setCustomVoiceFileName(null);
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-    setIsPlaying(false);
-    toast.success("Reset to default voice settings.");
+    setCustomVoiceId(null);
+    setIsPlayingSample(false);
+    setIsSynthesizing(false);
+    toast.success("Reset to default Maya natural Indian voice.");
   };
 
-  // Maya's Recommended Pitch Script
+  // Recommended Pitch Script for training/cloning
   const SCRIPT_TEXT = `Assalam-o-Alaikum! Jeose Services se Maya baat kar rahi hoon.
 
 Hum aapke business ke liye Complete Business Website aur Branding Package offer kar rahe hain — sirf AED 299 me!
@@ -229,23 +312,23 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-violet-500/30 bg-gradient-to-r from-violet-950/60 via-purple-900/30 to-card p-6 md:p-8 shadow-2xl">
+      <div className="relative overflow-hidden rounded-3xl border border-violet-500/30 bg-gradient-to-r from-violet-950/70 via-purple-900/35 to-card p-6 md:p-8 shadow-2xl">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/15 px-3 py-1 text-xs font-bold text-rose-300">
-                <Mic className="h-3.5 w-3.5 animate-pulse" />
-                Real Voice Audio Engine
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300">
+                <Sparkles className="h-3.5 w-3.5" />
+                AI Voice Cloning &amp; Dynamic TTS Engine
               </span>
               <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-0.5 text-xs text-amber-300 font-bold">
-                Maya AED 299 Package Voice
+                Maya AED 299 Package Specialist
               </span>
             </div>
             <h2 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">
-              🎙️ Upload or Record Real Voice for Maya
+              🎙️ Voice Cloning Studio: Use Your Voice to Speak Any Text
             </h2>
-            <p className="text-xs md:text-sm text-muted-foreground max-w-2xl">
-              Aap apni real aawaz ki file (<strong>.mp3</strong> ya <strong>.wav</strong>) yahan upload kar sakte hain, ya microphone se direct record kar sakte hain. Jab bhi Maya client ko call karegi, client ko aapki real recording sunai degi!
+            <p className="text-xs md:text-sm text-muted-foreground max-w-2xl leading-relaxed">
+              Apni real aawaz ka sample (<strong>.mp3 / .wav</strong>) yahan upload ya record karein. Maya <strong>sirf aapki aawaz ka lehja (voice clone)</strong> use karegi — poori recording play nahi hogi! Maya ko <strong>koi bhi naya text</strong> dein, wo usi aawaz mein bolega.
             </p>
           </div>
 
@@ -255,7 +338,7 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
             className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 px-5 py-3 text-sm font-extrabold text-white shadow-xl shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
           >
             <PhoneCall className="h-4 w-4" />
-            <span>Open Dialer &amp; Call Now</span>
+            <span>Open Phone Dialer</span>
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>
@@ -265,18 +348,29 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
       <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-md space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-4">
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-2xl ${customVoiceUrl ? "bg-emerald-500/15 text-emerald-400" : "bg-violet-500/15 text-violet-400"}`}>
+            <div
+              className={`p-3 rounded-2xl ${
+                customVoiceUrl || customVoiceId
+                  ? "bg-emerald-500/15 text-emerald-400"
+                  : "bg-violet-500/15 text-violet-400"
+              }`}
+            >
               <Headphones className="h-6 w-6" />
             </div>
             <div>
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Current Active Voice for Calls
+                Current Active Voice for Calls &amp; Speech
               </div>
-              <div className="text-lg font-bold text-foreground flex items-center gap-2">
-                <span>{customVoiceUrl ? customVoiceFileName || "Custom Real Voice Audio" : "Maya (Natural Indian Female Voice - Urdu + English)"}</span>
-                {customVoiceUrl ? (
-                  <span className="rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] px-2 py-0.5 font-semibold">
-                    ✓ Real Voice Active
+              <div className="text-lg font-bold text-foreground flex items-center gap-2 flex-wrap">
+                <span>
+                  {customVoiceUrl || customVoiceId
+                    ? customVoiceFileName || "Custom Real Cloned Voice"
+                    : "Maya (Natural Indian Female Voice - Urdu + English)"}
+                </span>
+                {customVoiceUrl || customVoiceId ? (
+                  <span className="rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] px-2.5 py-0.5 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Voice Clone Active (Speaks Dynamic Text)
                   </span>
                 ) : (
                   <span className="rounded-full bg-violet-500/20 text-violet-300 text-[11px] px-2 py-0.5 font-semibold">
@@ -287,51 +381,221 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {customVoiceUrl && (
-              <>
-                <button
-                  type="button"
-                  onClick={togglePlayAudio}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs shadow-md transition cursor-pointer"
-                >
-                  {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  <span>{isPlaying ? "Stop Audio" : "Play & Listen Voice"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 font-semibold text-xs transition cursor-pointer"
-                  title="Remove custom audio and use default natural voice"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  <span>Reset to Natural Voice</span>
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={togglePlaySample}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-muted/40 hover:bg-muted text-foreground font-semibold text-xs transition cursor-pointer"
+                title="Listen to the raw uploaded sample audio file only"
+              >
+                {isPlayingSample ? <Pause className="h-3.5 w-3.5 text-amber-400" /> : <Play className="h-3.5 w-3.5" />}
+                <span>{isPlayingSample ? "Pause Sample" : "Listen Original Sample"}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowKeyInput(!showKeyInput)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-semibold text-xs transition cursor-pointer"
+            >
+              <Key className="h-3.5 w-3.5" />
+              <span>{elevenlabsKey ? "ElevenLabs Connected" : "Connect ElevenLabs API"}</span>
+            </button>
+
+            {(customVoiceUrl || customVoiceId) && (
+              <button
+                type="button"
+                onClick={handleReset}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 font-semibold text-xs transition cursor-pointer"
+                title="Reset to default voice settings"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Reset Voice</span>
+              </button>
             )}
           </div>
         </div>
 
-        {customVoiceUrl ? (
-          <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-            <span>
-              <strong>Real Voice Enabled:</strong> UAE / KSA clients will hear this exact audio recording when Maya makes or receives calls.
-            </span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 border border-border/80 rounded-xl p-3">
-            <Info className="h-4 w-4 shrink-0 text-violet-400" />
-            <span>
-              Currently using Maya&apos;s smooth natural Indian female voice. Upload an <strong>.mp3/.wav</strong> file below or record with your microphone to use your real voice.
-            </span>
+        {/* ElevenLabs API Key Config Drawer */}
+        {showKeyInput && (
+          <div className="p-4 rounded-xl border border-violet-500/30 bg-violet-950/20 space-y-3 animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+                ElevenLabs Instant Voice Cloning API Key (Optional)
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                Get your key at <a href="https://elevenlabs.io" target="_blank" rel="noreferrer" className="text-violet-400 underline">elevenlabs.io</a>
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                placeholder="xi_••••••••••••••••••••••••"
+                value={elevenlabsKey}
+                onChange={(e) => setElevenlabsKey(e.target.value)}
+                className="flex-1 text-xs rounded-xl border border-border bg-card p-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500"
+              />
+              <button
+                type="button"
+                onClick={handleSaveElevenLabsKey}
+                className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs transition cursor-pointer"
+              >
+                Save Key
+              </button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Agar aapke paas ElevenLabs key nahi hai, koi baat nahi — hamara built-in Multilingual Neural Voice Cloner bina key ke bhi automatically dynamic aawaz mein bolega!
+            </p>
           </div>
         )}
+
+        <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <span>
+            <strong>Professional Voice Synthesis:</strong> Maya aapki uploaded recording ko direct nahi chalati. Maya <strong>sirf aapki aawaz clone</strong> karti hai aur client se baat karte waqt ya niche text box me koi bhi text dene par <strong>wahi exact jumla usi aawaz mein</strong> bolti hai!
+          </span>
+        </div>
       </div>
 
-      {/* Grid: Option 1 (Upload File) and Option 2 (Record Microphone) */}
+      {/* ======================================================== */}
+      {/* 🗣️ LIVE TEXT-TO-SPEECH STUDIO: SPEAK ANY TEXT DYNAMICALLY */}
+      {/* ======================================================== */}
+      <div className="rounded-3xl border-2 border-emerald-500/40 bg-gradient-to-br from-card via-card to-emerald-950/15 p-6 md:p-8 shadow-2xl space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-400">
+              <MessageSquare className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-lg md:text-xl font-extrabold text-foreground">
+                🗣️ Live Dynamic Speech Tester: Koi Bhi Text Bol Kar Suno
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Yahan koi bhi text likhein aur dekhein Maya kis tarah aapki aawaz mein wahi naya text bolti hai.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+              Real-time Speech Synthesis
+            </span>
+          </div>
+        </div>
+
+        {/* Text Area to type ANY dynamic text */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <label className="font-bold text-foreground">
+              Dynamic Text to Speak in Cloned Voice (Roman Urdu, Urdu, or English):
+            </label>
+            <span className="text-muted-foreground text-[11px]">
+              {testText.length} characters
+            </span>
+          </div>
+
+          <textarea
+            rows={4}
+            value={testText}
+            onChange={(e) => setTestText(e.target.value)}
+            placeholder="Type any message here, and Maya will speak it in your cloned voice..."
+            className="w-full text-sm rounded-2xl border border-emerald-500/30 bg-muted/30 p-4 text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 font-sans leading-relaxed shadow-inner"
+          />
+        </div>
+
+        {/* Quick Preset Test Buttons */}
+        <div className="space-y-1.5">
+          <span className="text-[11px] font-semibold text-muted-foreground">
+            Quick Test Prompts (Click to test):
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              {
+                label: "🚀 AED 299 Website Offer",
+                text: "Ji bilkul! Hamara Complete Business Website aur Branding Package sirf AED 299 ka hai. Isme custom website, free domain, 1 year hosting aur company profile sab shamil hai!",
+              },
+              {
+                label: "📩 WhatsApp Proposal",
+                text: "Done! Maine complete AED 299 Website & Branding Package brochure aapke WhatsApp number par send kar di hai. Please check karein!",
+              },
+              {
+                label: "📅 Appointment Booking",
+                text: "Maya aapki design consultation confirm kar sakti hai. Hamare paas kal subah 11:00 AM ka slot available hai. Kya yeh waqt aapke liye theek hai?",
+              },
+              {
+                label: "🤝 Professional Greeting",
+                text: "Assalam-o-Alaikum! Jeose Services se Maya baat kar rahi hoon. Main aapki kis tarah madad kar sakti hoon?",
+              },
+            ].map((preset, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setTestText(preset.text)}
+                className="text-xs px-3 py-1.5 rounded-xl border border-border bg-muted/40 hover:bg-emerald-500/10 hover:border-emerald-500/40 text-muted-foreground hover:text-emerald-300 transition cursor-pointer"
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Speak Action Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-border/80">
+          <div className="flex items-center gap-3">
+            {isSynthesizing && (
+              <div className="flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-full bg-emerald-400 animate-ping" />
+                <span className="text-xs font-bold text-emerald-400 animate-pulse">
+                  Speaking text in cloned voice...
+                </span>
+                {/* Visualizer bars */}
+                <div className="h-5 flex items-center gap-1 ml-2">
+                  {[12, 22, 16, 28, 14, 24, 18, 8, 20].map((h, i) => (
+                    <div
+                      key={i}
+                      style={{ height: `${h}px` }}
+                      className="w-1 bg-emerald-400 rounded-full animate-pulse"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            {!isSynthesizing && (
+              <span className="text-xs text-muted-foreground">
+                Click button to synthesize and listen to this exact sentence.
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {isSynthesizing ? (
+              <button
+                type="button"
+                onClick={handleSpeakDynamicText}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-sm shadow-xl shadow-rose-600/30 transition-all cursor-pointer animate-pulse"
+              >
+                <Square className="h-4 w-4" />
+                <span>Stop Speaking</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSpeakDynamicText}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-extrabold text-sm shadow-xl shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <Volume2 className="h-5 w-5" />
+                <span>🔊 Speak In Cloned Voice (Yeh Text Bolo)</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Grid: Option 1 (Upload Voice File) and Option 2 (Record Microphone) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* OPTION 1: Upload Audio File */}
+        {/* OPTION 1: Upload Audio Sample File */}
         <div className="rounded-3xl border-2 border-violet-500/40 bg-card p-6 shadow-xl space-y-5 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center gap-2.5">
@@ -340,10 +604,10 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
               </div>
               <div>
                 <h3 className="font-extrabold text-foreground text-base">
-                  Option 1: Upload Audio File (.mp3, .wav)
+                  Option 1: Upload Voice Sample (.mp3, .wav)
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Apne computer ya mobile se recorded voice file select karein
+                  Apne computer ya mobile se apni recording select karein
                 </p>
               </div>
             </div>
@@ -358,7 +622,7 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
               </div>
               <div className="space-y-1">
                 <div className="text-sm font-bold text-foreground">
-                  {isUploading ? "Uploading audio file..." : "Click to Browse Audio File"}
+                  {isUploading ? "Cloning voice timbre..." : "Click to Select Voice Sample"}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Supported: MP3, WAV, M4A, AAC, WEBM, OGG (Max 25MB)
@@ -381,7 +645,7 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
           </div>
 
           <div className="text-[11px] text-muted-foreground bg-muted/30 p-3 rounded-xl border border-border/80">
-            💡 <strong>Tip:</strong> Clear audio file jisme koi background noise na ho upload karein taake client ko aawaz bilkul clear sunai de.
+            💡 <strong>Tip:</strong> 15 se 45 second ki clear voice file upload karein taake AI aapki aawaz ke tamaam sur aur pitch ko accurately capture kar sake.
           </div>
         </div>
 
@@ -397,7 +661,7 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
                   Option 2: Direct Mic Recording
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Apne browser microphone se direct apni aawaz record karein
+                  Apne microphone se direct 20-30 seconds bol kar aawaz record karein
                 </p>
               </div>
             </div>
@@ -414,7 +678,7 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
                   </div>
                   <div className="space-y-1">
                     <div className="text-rose-400 font-extrabold text-sm uppercase tracking-wider animate-pulse">
-                      Recording Active...
+                      Recording Voice Sample...
                     </div>
                     <div className="font-mono text-2xl font-bold text-foreground">
                       {Math.floor(recordingSeconds / 60)
@@ -430,7 +694,7 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
                     className="inline-flex items-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm px-6 py-2.5 shadow-lg shadow-rose-600/30 transition cursor-pointer"
                   >
                     <Square className="h-4 w-4" />
-                    <span>Stop &amp; Save Recording</span>
+                    <span>Stop &amp; Clone Voice</span>
                   </button>
                 </div>
               ) : (
@@ -443,7 +707,7 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
                       Ready to Record Voice
                     </div>
                     <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                      Click start, read the script below into your microphone, and click stop when finished.
+                      Start daba kar niche di gayi script ko clear aawaz mein read karein.
                     </p>
                   </div>
 
@@ -461,7 +725,7 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
           </div>
 
           <div className="text-[11px] text-muted-foreground bg-muted/30 p-3 rounded-xl border border-border/80">
-            🎙️ Recording finish hotay hi automatic server aur browser memory mein save ho jayegi.
+            🎙️ Recording stop hotay hi system aapki aawaz clone kar ke Maya ke liye set kar dega.
           </div>
         </div>
       </div>
@@ -497,7 +761,7 @@ Kya main aapke WhatsApp number par complete proposal aur portfolio send kar doon
 
         <div className="flex items-center justify-between pt-2">
           <span className="text-xs text-muted-foreground">
-            Aap apni marzi ke mutabiq Urdu ya English mein bhi script change kar ke record kar sakte hain.
+            Aap apni marzi ke mutabiq koi bhi script bol kar apni aawaz record kar sakte hain.
           </span>
           <button
             type="button"

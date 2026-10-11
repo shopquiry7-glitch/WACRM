@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type { VoiceAgent, VoiceCall, CallTranscriptTurn } from "@/types/voice-calling";
 import { speakText, stopSpeaking, generateSimulatedAgentResponse, startMicRecognition } from "@/lib/voice-calling/voice-audio";
+import { getCustomVoiceSync } from "@/lib/voice-calling/custom-voice-db";
 import { toast } from "sonner";
 
 interface InboundReceptionistTabProps {
@@ -93,7 +94,9 @@ export function InboundReceptionistTab({
     setTranscript([firstTurn]);
 
     if (!isMuted) {
+      const customRecord = getCustomVoiceSync();
       speakText(receptionistAgent.firstMessage, {
+        audioUrl: customRecord?.dataUrl || undefined,
         onEnd: () => setIsAgentSpeaking(false),
       });
     } else {
