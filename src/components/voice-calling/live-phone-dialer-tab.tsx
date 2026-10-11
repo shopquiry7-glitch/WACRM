@@ -374,11 +374,10 @@ export function LivePhoneDialerTab({
         };
         setLiveTranscript([firstTurn]);
 
-        // Speak aloud Maya's voice: uses the user's uploaded real human voice for greeting/pitch!
+        // Speak aloud Maya's voice using cloned voice synthesis
         if (inCallSpeaker) {
           speakText(customGreeting, {
             rate: 1.0,
-            audioUrl: customVoiceUrl || undefined,
             onEnd: () => {
               // Simulated client response in UAE / KSA
               setTimeout(() => {

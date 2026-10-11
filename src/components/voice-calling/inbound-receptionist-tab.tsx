@@ -94,9 +94,7 @@ export function InboundReceptionistTab({
     setTranscript([firstTurn]);
 
     if (!isMuted) {
-      const customRecord = getCustomVoiceSync();
       speakText(receptionistAgent.firstMessage, {
-        audioUrl: customRecord?.dataUrl || undefined,
         onEnd: () => setIsAgentSpeaking(false),
       });
     } else {
