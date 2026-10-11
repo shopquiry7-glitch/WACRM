@@ -150,6 +150,7 @@ export async function saveCustomVoice(
         localStorage.setItem('custom_maya_elevenlabs_key', apiKey);
       }
       localStorage.setItem('maya_voice_mode', 'real_cloned_voice');
+      localStorage.removeItem('maya_voice_reset');
     } catch {
       // quota fallback handled by IndexedDB
     }
@@ -165,23 +166,30 @@ export function getCustomVoiceSync(): ClonedVoiceRecord | null {
   if (cachedVoice) return cachedVoice;
 
   if (typeof window !== 'undefined') {
+    const isReset = localStorage.getItem('maya_voice_reset') === 'true';
+    if (isReset) return null;
+
     const storedUrl = localStorage.getItem('custom_maya_voice_url');
     const storedName = localStorage.getItem('custom_maya_voice_name');
     const storedVoiceId = localStorage.getItem('custom_maya_voice_id');
     const storedProvider = (localStorage.getItem('custom_maya_voice_provider') as 'elevenlabs' | 'neural') || 'neural';
     const storedApiKey = localStorage.getItem('custom_maya_elevenlabs_key') || '';
 
-    if (storedUrl || storedVoiceId) {
-      cachedVoice = {
-        dataUrl: storedUrl && !storedUrl.startsWith('indexeddb:') ? storedUrl : '',
-        name: storedName || 'Real Human Voice',
-        voiceId: storedVoiceId || 'neural_custom_clone',
-        provider: storedProvider,
-        apiKey: storedApiKey,
-        updatedAt: Date.now(),
-      };
-      return cachedVoice;
-    }
+    // If stored or if default audio file exists
+    const effectiveUrl =
+      storedUrl && !storedUrl.startsWith('indexeddb:')
+        ? storedUrl
+        : '/sounds/custom-maya-voice.webm';
+
+    cachedVoice = {
+      dataUrl: effectiveUrl,
+      name: storedName || 'Real Human Voice Recording (AED 299 Pitch)',
+      voiceId: storedVoiceId || 'neural_custom_clone',
+      provider: storedProvider,
+      apiKey: storedApiKey,
+      updatedAt: Date.now(),
+    };
+    return cachedVoice;
   }
 
   return null;
@@ -205,6 +213,10 @@ export async function getCustomVoice(): Promise<{
       provider: cachedVoice.provider || null,
       apiKey: cachedVoice.apiKey || null,
     };
+  }
+
+  if (typeof window !== 'undefined' && localStorage.getItem('maya_voice_reset') === 'true') {
+    return { url: null, name: null, voiceId: null, provider: null, apiKey: null };
   }
 
   // Check localStorage first
@@ -265,16 +277,21 @@ export async function getCustomVoice(): Promise<{
     if (res.ok) {
       const data = await res.json();
       if (data.hasCustomVoice && data.url) {
+        const voiceName = data.name || 'Real Human Voice Recording (AED 299 Pitch)';
         cachedVoice = {
           dataUrl: data.url,
-          name: 'custom-maya-voice.mp3',
+          name: voiceName,
           voiceId: 'neural_custom_clone',
           provider: 'neural',
           updatedAt: Date.now(),
         };
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('custom_maya_voice_url', data.url);
+          localStorage.setItem('custom_maya_voice_name', voiceName);
+        }
         return {
           url: data.url,
-          name: 'custom-maya-voice.mp3',
+          name: voiceName,
           voiceId: 'neural_custom_clone',
           provider: 'neural',
           apiKey: null,
@@ -285,7 +302,22 @@ export async function getCustomVoice(): Promise<{
     // ignore
   }
 
-  return { url: null, name: null, voiceId: null, provider: null, apiKey: null };
+  // Default fallback to real voice file
+  cachedVoice = {
+    dataUrl: '/sounds/custom-maya-voice.webm',
+    name: 'Real Human Voice Recording (AED 299 Pitch)',
+    voiceId: 'neural_custom_clone',
+    provider: 'neural',
+    updatedAt: Date.now(),
+  };
+
+  return {
+    url: '/sounds/custom-maya-voice.webm',
+    name: 'Real Human Voice Recording (AED 299 Pitch)',
+    voiceId: 'neural_custom_clone',
+    provider: 'neural',
+    apiKey: null,
+  };
 }
 
 /**
@@ -316,6 +348,7 @@ export async function clearCustomVoice(): Promise<void> {
     localStorage.removeItem('custom_maya_voice_id');
     localStorage.removeItem('custom_maya_voice_provider');
     localStorage.removeItem('maya_voice_mode');
+    localStorage.setItem('maya_voice_reset', 'true');
   }
 
   try {

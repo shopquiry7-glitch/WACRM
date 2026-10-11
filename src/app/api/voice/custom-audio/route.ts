@@ -4,15 +4,15 @@ import path from 'path';
 
 /**
  * Custom Real Voice Audio Handler
- * Allows users to upload their own real human audio recording (MP3/WAV/M4A) or recorded voice
- * to be used as Maya's voice for live calls and website package pitches.
+ * Serves and manages the user's uploaded real human voice audio file (.webm / .mp3)
+ * used for Maya's live outbound and inbound call greetings.
  */
 
 export async function POST(req: NextRequest) {
   try {
     let buffer: Buffer | null = null;
-    let filename = 'custom-maya-voice.mp3';
-    let mimeType = 'audio/mpeg';
+    let filename = 'custom-maya-voice.webm';
+    let mimeType = 'audio/webm';
 
     const contentType = req.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
         const bytes = await file.arrayBuffer();
         buffer = Buffer.from(bytes);
         filename = file.name;
-        mimeType = file.type || 'audio/mpeg';
+        mimeType = file.type || 'audio/webm';
       }
     }
 
@@ -42,20 +42,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No audio data received' }, { status: 400 });
     }
 
-    let publicUrl = `/sounds/custom-maya-voice.mp3?t=${Date.now()}`;
+    const ext = filename.endsWith('.mp3') ? 'mp3' : 'webm';
+    let publicUrl = `/sounds/custom-maya-voice.${ext}?t=${Date.now()}`;
     const base64DataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
 
-    // Attempt to write to public/sounds directory if filesystem is writable
+    // Attempt to write to public/sounds directory
     try {
       const uploadsDir = path.join(process.cwd(), 'public', 'sounds');
       if (!fs.existsSync(uploadsDir)) {
         fs.mkdirSync(uploadsDir, { recursive: true });
       }
-      const filePath = path.join(uploadsDir, 'custom-maya-voice.mp3');
-      fs.writeFileSync(filePath, buffer);
+      fs.writeFileSync(path.join(uploadsDir, `custom-maya-voice.${ext}`), buffer);
+      // Also write MP3 alias for compatibility
+      fs.writeFileSync(path.join(uploadsDir, 'custom-maya-voice.mp3'), buffer);
     } catch (fsErr) {
-      // On Vercel / serverless read-only environments, fallback to Base64 Data URL
-      console.warn('Filesystem read-only (serverless mode), using Base64 Data URL:', fsErr);
+      console.warn('Filesystem write notice (serverless mode):', fsErr);
       publicUrl = base64DataUrl;
     }
 
@@ -75,18 +76,36 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
-    const filePath = path.join(process.cwd(), 'public', 'sounds', 'custom-maya-voice.mp3');
-    const exists = fs.existsSync(filePath);
-    let size = 0;
-    if (exists) {
-      const stat = fs.statSync(filePath);
-      size = stat.size;
+    const filePathWebm = path.join(process.cwd(), 'public', 'sounds', 'custom-maya-voice.webm');
+    const filePathMp3 = path.join(process.cwd(), 'public', 'sounds', 'custom-maya-voice.mp3');
+
+    const existsWebm = fs.existsSync(filePathWebm);
+    const existsMp3 = fs.existsSync(filePathMp3);
+
+    let chosenPath = '';
+    let publicUrl = '';
+
+    if (existsWebm) {
+      chosenPath = filePathWebm;
+      publicUrl = '/sounds/custom-maya-voice.webm';
+    } else if (existsMp3) {
+      chosenPath = filePathMp3;
+      publicUrl = '/sounds/custom-maya-voice.mp3';
     }
-    return NextResponse.json({
-      hasCustomVoice: exists && size > 1000,
-      url: exists && size > 1000 ? '/sounds/custom-maya-voice.mp3' : null,
-      size,
-    });
+
+    if (chosenPath) {
+      const stat = fs.statSync(chosenPath);
+      if (stat.size > 1000) {
+        return NextResponse.json({
+          hasCustomVoice: true,
+          url: publicUrl,
+          size: stat.size,
+          name: 'Real Human Voice Recording (AED 299 Pitch)',
+        });
+      }
+    }
+
+    return NextResponse.json({ hasCustomVoice: false, url: null });
   } catch {
     return NextResponse.json({ hasCustomVoice: false, url: null });
   }
