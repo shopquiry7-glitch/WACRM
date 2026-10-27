@@ -78,6 +78,9 @@
     "vitest": "^4.1.11"
   },
   "overrides": {
+    "@andresaya/edge-tts": {
+      "typescript": "$typescript"
+    },
     "postcss": "^8.5.10",
     "ip-address": "^10.3.1",
     "fast-uri": "^3.1.6",
