@@ -90,12 +90,10 @@ export function Header({ onOpenSidebar }: HeaderProps) {
           aria-label={t("openAccountMenu")}
         >
           <Avatar className="size-8">
-            {profile?.avatar_url ? (
-              <AvatarImage
-                src={profile.avatar_url}
-                alt={profile.full_name ?? t("defaultAvatar")}
-              />
-            ) : null}
+            <AvatarImage
+              src={profile?.avatar_url || "/images/jeose-dp.png"}
+              alt={profile?.full_name ?? t("defaultAvatar")}
+            />
             <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
               {initial}
             </AvatarFallback>

@@ -11,6 +11,10 @@ import {
   hasMinRole,
   isAccountRole,
   roleRank,
+  formatRoleLabel,
+  buildSenderSignature,
+  appendSenderSignature,
+  parseSenderSignature,
 } from "./roles";
 
 describe("roleRank", () => {
@@ -128,3 +132,50 @@ describe("capability predicates", () => {
     expect(canTransferOwnership("viewer")).toBe(false);
   });
 });
+
+describe("sender role & signature helpers", () => {
+  it("formats role labels correctly", () => {
+    expect(formatRoleLabel("owner")).toBe("Owner");
+    expect(formatRoleLabel("admin")).toBe("Admin");
+    expect(formatRoleLabel("agent")).toBe("Team Member");
+    expect(formatRoleLabel("viewer")).toBe("Viewer");
+    expect(formatRoleLabel(null)).toBe("Team Member");
+    expect(formatRoleLabel(undefined)).toBe("Team Member");
+  });
+
+  it("builds sender signature", () => {
+    expect(buildSenderSignature("Zain", "owner")).toBe("~ Zain (Owner)");
+    expect(buildSenderSignature("Ali", "agent")).toBe("~ Ali (Team Member)");
+    expect(buildSenderSignature("Sarah", "admin")).toBe("~ Sarah (Admin)");
+    expect(buildSenderSignature("", "owner")).toBe("~ Team (Owner)");
+  });
+
+  it("appends signature without duplicate", () => {
+    const raw = "Hello! How can I help you?";
+    const signed = appendSenderSignature(raw, "Zain", "owner");
+    expect(signed).toBe("Hello! How can I help you?\n\n~ Zain (Owner)");
+
+    // Does not append twice
+    const doubleSigned = appendSenderSignature(signed, "Zain", "owner");
+    expect(doubleSigned).toBe(signed);
+
+    // Replaces previous signature if role/name changed
+    const updated = appendSenderSignature(signed, "Ali", "agent");
+    expect(updated).toBe("Hello! How can I help you?\n\n~ Ali (Team Member)");
+  });
+
+  it("parses signature from text", () => {
+    const text = "Hi there, your order is ready.\n\n~ Zain (Owner)";
+    const parsed = parseSenderSignature(text);
+    expect(parsed.cleanText).toBe("Hi there, your order is ready.");
+    expect(parsed.senderName).toBe("Zain");
+    expect(parsed.senderRole).toBe("Owner");
+
+    const plain = "Just a regular message";
+    const parsedPlain = parseSenderSignature(plain);
+    expect(parsedPlain.cleanText).toBe(plain);
+    expect(parsedPlain.senderName).toBeUndefined();
+    expect(parsedPlain.senderRole).toBeUndefined();
+  });
+});
+

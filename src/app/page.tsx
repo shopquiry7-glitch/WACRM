@@ -323,15 +323,22 @@ export default function LandingPage() {
           
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="size-10 rounded-xl bg-gradient-to-tr from-violet-600 via-primary to-indigo-500 flex items-center justify-center shadow-lg shadow-violet-500/25 border border-white/20 group-hover:scale-105 transition-transform">
-              <Sparkles className="size-5 text-white" />
+            <div className="size-10 rounded-xl overflow-hidden bg-black flex items-center justify-center shadow-lg shadow-violet-500/25 border border-white/20 group-hover:scale-105 transition-transform p-0.5">
+              <Image
+                src="/images/jeose-dp.png"
+                alt="Jeose Logo"
+                width={40}
+                height={40}
+                className="h-full w-full object-contain"
+                priority
+              />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-xl tracking-tight text-white">CRMPro</span>
+                <span className="font-extrabold text-xl tracking-tight text-white">Jeose CRM</span>
               </div>
               <p className="text-[10px] uppercase tracking-wider font-semibold text-violet-400 -mt-1">
-                Smart Business Suite
+                Smart WhatsApp Suite
               </p>
             </div>
           </Link>

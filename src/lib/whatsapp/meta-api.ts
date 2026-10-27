@@ -1223,3 +1223,94 @@ export async function downloadMedia(
   const buffer = Buffer.from(await response.arrayBuffer())
   return { buffer, contentType }
 }
+
+// ============================================================
+// WhatsApp Business Profile & Display Picture
+// ============================================================
+
+export interface WhatsAppBusinessProfile {
+  about?: string
+  address?: string
+  description?: string
+  email?: string
+  profile_picture_url?: string
+  websites?: string[]
+  vertical?: string
+  messaging_product?: string
+}
+
+export interface GetBusinessProfileArgs {
+  phoneNumberId: string
+  accessToken: string
+}
+
+export async function getWhatsAppBusinessProfile(
+  args: GetBusinessProfileArgs,
+): Promise<WhatsAppBusinessProfile> {
+  const { phoneNumberId, accessToken } = args
+  const url = `${META_API_BASE}/${phoneNumberId}/whatsapp_business_profile?fields=about,address,description,email,profile_picture_url,websites,vertical`
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!res.ok) {
+    await throwMetaError(res, `Failed to get WhatsApp business profile: ${res.status}`)
+  }
+  const data = (await res.json()) as { data?: WhatsAppBusinessProfile[] }
+  return (data.data && data.data[0]) || {}
+}
+
+export interface UpdateBusinessProfileArgs {
+  phoneNumberId: string
+  accessToken: string
+  profilePictureHandle?: string
+  about?: string
+  description?: string
+  email?: string
+  websites?: string[]
+  address?: string
+  vertical?: string
+}
+
+export async function updateWhatsAppBusinessProfile(
+  args: UpdateBusinessProfileArgs,
+): Promise<{ success: boolean }> {
+  const {
+    phoneNumberId,
+    accessToken,
+    profilePictureHandle,
+    about,
+    description,
+    email,
+    websites,
+    address,
+    vertical,
+  } = args
+
+  const body: Record<string, unknown> = {
+    messaging_product: 'whatsapp',
+  }
+  if (profilePictureHandle) body.profile_picture_handle = profilePictureHandle
+  if (about !== undefined) body.about = about
+  if (description !== undefined) body.description = description
+  if (email !== undefined) body.email = email
+  if (websites !== undefined) body.websites = websites
+  if (address !== undefined) body.address = address
+  if (vertical !== undefined) body.vertical = vertical
+
+  const res = await fetch(`${META_API_BASE}/${phoneNumberId}/whatsapp_business_profile`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    await throwMetaError(res, `Failed to update WhatsApp business profile: ${res.status}`)
+  }
+
+  const data = (await res.json()) as { success?: boolean }
+  return { success: Boolean(data.success) }
+}
+

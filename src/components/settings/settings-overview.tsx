@@ -224,9 +224,7 @@ export function SettingsOverview({
       {/* Identity */}
       <Card className="flex-row items-center gap-4 px-5 py-5">
         <Avatar size="lg" className="size-14">
-          {profile?.avatar_url ? (
-            <AvatarImage src={profile.avatar_url} alt={displayName} />
-          ) : null}
+          <AvatarImage src={profile?.avatar_url || "/images/jeose-dp.png"} alt={displayName} />
           <AvatarFallback className="bg-primary/10 text-xl text-primary">
             {initial}
           </AvatarFallback>

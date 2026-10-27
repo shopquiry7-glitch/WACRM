@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -221,15 +222,22 @@ function RegisterPageInner() {
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="size-9 rounded-xl bg-gradient-to-tr from-violet-600 via-primary to-indigo-500 flex items-center justify-center shadow-lg shadow-primary/20 border border-white/10 group-hover:scale-105 transition-transform">
-              <Sparkles className="size-5 text-white" />
+            <div className="size-9 rounded-xl overflow-hidden bg-black flex items-center justify-center shadow-lg shadow-primary/20 border border-white/10 group-hover:scale-105 transition-transform p-0.5">
+              <Image
+                src="/images/jeose-dp.png"
+                alt="Jeose Logo"
+                width={36}
+                height={36}
+                className="h-full w-full object-contain"
+                priority
+              />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-lg tracking-tight text-foreground">CRMPro</span>
+                <span className="font-bold text-lg tracking-tight text-foreground">Jeose CRM</span>
               </div>
               <p className="text-[10px] uppercase tracking-wider font-semibold text-primary -mt-1">
-                Smart Business Suite
+                WhatsApp Business Suite
               </p>
             </div>
           </Link>

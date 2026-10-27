@@ -234,6 +234,8 @@ export interface Message {
   conversation_id: string;
   sender_type: SenderType;
   sender_id?: string;
+  sender_name?: string;
+  sender_role?: string;
   content_type: ContentType;
   content_text?: string;
   media_url?: string;

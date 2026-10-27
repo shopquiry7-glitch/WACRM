@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type { Message, MessageReaction } from "@/types";
 import {
@@ -12,6 +13,9 @@ import {
   CornerDownLeft,
   Sparkles,
   AlertCircle,
+  Crown,
+  Shield,
+  User,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ReplyQuote } from "./reply-quote";
@@ -26,6 +30,7 @@ import {
 import { InteractivePreview } from "@/components/interactive/interactive-preview";
 import { useTranslations } from "next-intl";
 import { formatMessageFailureReason } from "@/lib/whatsapp/failure-reason";
+import { formatRoleLabel, parseSenderSignature } from "@/lib/auth/roles";
 
 interface MessageBubbleProps {
   message: Message;
@@ -42,6 +47,8 @@ interface MessageBubbleProps {
   onOpenMedia?: (messageId: string) => void;
   /** Opens the template picker dialog when a 24h error occurs. */
   onOpenTemplates?: () => void;
+  /** Profile info of the agent who sent this message (if known). */
+  senderProfile?: { full_name?: string | null; account_role?: string | null } | null;
 }
 
 /**
@@ -246,8 +253,33 @@ export function MessageBubble({
   onToggleReaction,
   onOpenMedia,
   onOpenTemplates,
+  senderProfile,
 }: MessageBubbleProps) {
   const t = useTranslations("Inbox.bubble");
+
+  const parsed = useMemo(
+    () => parseSenderSignature(message.content_text),
+    [message.content_text]
+  );
+
+  const displayMessage = useMemo(() => {
+    if (parsed.senderName && parsed.cleanText) {
+      return { ...message, content_text: parsed.cleanText };
+    }
+    return message;
+  }, [message, parsed]);
+
+  const senderName =
+    message.sender_name ||
+    senderProfile?.full_name ||
+    parsed.senderName;
+
+  const rawRole =
+    message.sender_role ||
+    senderProfile?.account_role ||
+    parsed.senderRole;
+
+  const roleLabel = rawRole ? formatRoleLabel(rawRole) : null;
 
   const isAgent = message.sender_type === "agent" || message.sender_type === "bot";
   const time = format(new Date(message.created_at), "HH:mm");
@@ -278,44 +310,77 @@ export function MessageBubble({
           />
         )}
         <MessageContent
-          message={message}
+          message={displayMessage}
           t={t}
           isAgent={isAgent}
           onOpenMedia={onOpenMedia}
         />
-        <div
-          className={cn(
-            "mt-1 flex items-center gap-1",
-            isAgent ? "justify-end" : "justify-start",
-          )}
-        >
-          {/* AI badge — only on replies the auto-reply bot generated
-              (always outbound, so it sits on the primary fill). Lets
-              agents tell an AI reply from their own / a Flow's at a
-              glance. */}
-          {message.ai_generated && (
-            <span
-              className="inline-flex items-center gap-0.5 rounded-full bg-primary-foreground/20 px-1.5 py-px text-[9px] font-semibold uppercase leading-none tracking-wide text-primary-foreground"
-              title={t("aiBadgeTitle")}
-            >
-              <Sparkles className="h-2.5 w-2.5" />
-              {t("aiBadge")}
-            </span>
-          )}
-          <span
+
+        {isAgent && !message.ai_generated && (senderName || roleLabel) ? (
+          <div className="mt-1 flex items-center justify-between gap-3 border-t border-primary-foreground/15 pt-1 text-[11px] leading-tight text-primary-foreground/90">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="truncate max-w-[150px] font-medium opacity-95">
+                {senderName || "Team"}
+              </span>
+              {roleLabel && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider",
+                    rawRole?.toLowerCase() === "owner"
+                      ? "bg-amber-400/25 text-amber-200 border border-amber-300/30"
+                      : rawRole?.toLowerCase() === "admin"
+                        ? "bg-sky-400/25 text-sky-200 border border-sky-300/30"
+                        : "bg-primary-foreground/20 text-primary-foreground border border-primary-foreground/25"
+                  )}
+                >
+                  {rawRole?.toLowerCase() === "owner" && (
+                    <Crown className="h-2.5 w-2.5 mr-0.5 text-amber-300" />
+                  )}
+                  {rawRole?.toLowerCase() === "admin" && (
+                    <Shield className="h-2.5 w-2.5 mr-0.5 text-sky-300" />
+                  )}
+                  {rawRole?.toLowerCase() !== "owner" &&
+                    rawRole?.toLowerCase() !== "admin" && (
+                      <User className="h-2.5 w-2.5 mr-0.5 opacity-80" />
+                    )}
+                  {roleLabel}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0 ml-auto">
+              <span className="text-[10px] text-primary-foreground/75">
+                {time}
+              </span>
+              <StatusIcon status={message.status} title={failure} />
+            </div>
+          </div>
+        ) : (
+          <div
             className={cn(
-              "text-[10px]",
-              // Outbound bubbles sit on the primary fill, so the
-              // timestamp must read against that (not the neutral
-              // foreground) — otherwise it goes low-contrast in light
-              // mode. Inbound bubbles use the muted surface.
-              isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
+              "mt-1 flex items-center gap-1",
+              isAgent ? "justify-end" : "justify-start",
             )}
           >
-            {time}
-          </span>
-          {isAgent && <StatusIcon status={message.status} title={failure} />}
-        </div>
+            {message.ai_generated && (
+              <span
+                className="inline-flex items-center gap-0.5 rounded-full bg-primary-foreground/20 px-1.5 py-px text-[9px] font-semibold uppercase leading-none tracking-wide text-primary-foreground"
+                title={t("aiBadgeTitle")}
+              >
+                <Sparkles className="h-2.5 w-2.5" />
+                {t("aiBadge")}
+              </span>
+            )}
+            <span
+              className={cn(
+                "text-[10px]",
+                isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
+              )}
+            >
+              {time}
+            </span>
+            {isAgent && <StatusIcon status={message.status} title={failure} />}
+          </div>
+        )}
       </div>
       {failure && (
         <div className="mt-1 space-y-0.5">

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireRole, toErrorResponse } from '@/lib/auth/account';
+import { appendSenderSignature } from '@/lib/auth/roles';
 import { CONVERSATION_SELECT, normalizeConversation } from '@/lib/inbox/conversations';
 import { sendMessageToConversation } from '@/lib/whatsapp/send-message';
 
@@ -13,7 +14,7 @@ function supabaseAdmin() {
 
 export async function POST(request: Request) {
   try {
-    const { accountId, userId } = await requireRole('agent');
+    const { accountId, userId, role, userName } = await requireRole('agent');
     const body = await request.json();
     const {
       phone: rawPhone,
@@ -151,6 +152,9 @@ export async function POST(request: Request) {
             templateName: approvedTpl.name,
             templateParams: [clientName, sender, company],
             contentText: renderedText,
+            senderId: effectiveUserId,
+            senderName: sender,
+            senderRole: role,
           });
         } else {
           // Deliver text via approved fallback template so it sends immediately without 24h block
@@ -158,6 +162,9 @@ export async function POST(request: Request) {
             conversationId: conv.id,
             messageType: 'text',
             contentText: renderedText,
+            senderId: effectiveUserId,
+            senderName: sender,
+            senderRole: role,
           });
         }
       } catch (sendErr) {
@@ -165,10 +172,15 @@ export async function POST(request: Request) {
       }
     } else if (message && typeof message === 'string' && message.trim()) {
       try {
+        const sender = inputSender?.trim() || userName || 'Our Team';
+        const signedMsg = appendSenderSignature(message.trim(), sender, role);
         await sendMessageToConversation(admin, accountId, {
           conversationId: conv.id,
           messageType: 'text',
-          contentText: message.trim(),
+          contentText: signedMsg,
+          senderId: effectiveUserId,
+          senderName: sender,
+          senderRole: role,
         });
       } catch (sendErr) {
         console.error('[start-chat] Initial message send failed:', sendErr);

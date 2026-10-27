@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireRole, toErrorResponse } from '@/lib/auth/account'
+import { appendSenderSignature, buildSenderSignature } from '@/lib/auth/roles'
 import {
   checkRateLimit,
   rateLimitResponse,
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     // still delivered a real WhatsApp message to the customer and merely
     // failed to record it (surfacing as "sent to Meta but failed to save
     // to DB"). RLS can't un-send that, so the role check belongs here.
-    const { supabase, accountId, userId } = await requireRole('agent')
+    const { supabase, accountId, userId, role, userName } = await requireRole('agent')
 
     // Per-user rate limit. Bucket key is scoped to this route so
     // `/broadcast` has an independent budget.
@@ -148,6 +149,28 @@ export async function POST(request: Request) {
       )
     }
 
+    // Attach sender signature for text & media caption so the client sees who sent the message and their role
+    let finalContentText = content_text;
+    if (message_type === 'text' && content_text) {
+      finalContentText = appendSenderSignature(content_text, userName, role);
+    } else if (['image', 'video', 'document'].includes(message_type)) {
+      if (content_text && content_text.trim()) {
+        finalContentText = appendSenderSignature(content_text, userName, role);
+      } else {
+        finalContentText = buildSenderSignature(userName, role);
+      }
+    }
+
+    let finalInteractivePayload = interactive_payload;
+    if (message_type === 'interactive' && interactive_payload) {
+      finalInteractivePayload = {
+        ...interactive_payload,
+        footer:
+          interactive_payload.footer ||
+          buildSenderSignature(userName, role).slice(0, 60),
+      };
+    }
+
     // Delegate to the shared send core (validates, sends to Meta with
     // phone-variant retry, persists, pauses active flow runs). Its
     // `SendMessageError` carries a machine code + HTTP status; the
@@ -156,15 +179,18 @@ export async function POST(request: Request) {
       const result = await sendMessageToConversation(supabase, accountId, {
         conversationId,
         messageType: message_type,
-        contentText: content_text,
+        contentText: finalContentText,
         mediaUrl: media_url,
         filename,
         templateName: template_name,
         templateLanguage: template_language,
         templateParams: template_params,
         templateMessageParams: template_message_params,
-        interactivePayload: interactive_payload,
+        interactivePayload: finalInteractivePayload,
         replyToMessageId: reply_to_message_id,
+        senderId: userId,
+        senderName: userName,
+        senderRole: role,
       })
 
       return NextResponse.json({

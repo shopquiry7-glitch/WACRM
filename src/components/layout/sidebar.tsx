@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Fragment, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -216,13 +217,25 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         {/* Logo row. On mobile we put a close button here; on desktop the
             close button is hidden since the sidebar is always-visible. */}
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <MessageSquare className="h-4 w-4" />
+          <Link href="/dashboard" className="flex items-center gap-2.5 group">
+            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black border border-white/10 shadow-sm transition-transform group-hover:scale-105">
+              <Image
+                src="/images/jeose-dp.png"
+                alt="Jeose Logo"
+                width={32}
+                height={32}
+                className="h-full w-full object-contain p-0.5"
+                priority
+              />
             </div>
-            <span className="text-sm font-semibold text-foreground">
-              {t("title")}
-            </span>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-foreground leading-tight">
+                {t("title")}
+              </span>
+              <span className="text-[10px] font-semibold text-primary uppercase tracking-wider leading-none mt-0.5">
+                WhatsApp CRM
+              </span>
+            </div>
           </Link>
           <button
             type="button"
@@ -395,12 +408,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           <DropdownMenu>
             <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted/60 focus:bg-muted/60 focus:outline-none data-popup-open:bg-muted/60">
               <Avatar className="size-8 shrink-0">
-                {profile?.avatar_url ? (
-                  <AvatarImage
-                    src={profile.avatar_url}
-                    alt={profile.full_name ?? t("defaultAvatar")}
-                  />
-                ) : null}
+                <AvatarImage
+                  src={profile?.avatar_url || "/images/jeose-dp.png"}
+                  alt={profile?.full_name ?? t("defaultAvatar")}
+                />
                 <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
                   {profile?.full_name?.charAt(0)?.toUpperCase() ??
                     profile?.email?.charAt(0)?.toUpperCase() ??

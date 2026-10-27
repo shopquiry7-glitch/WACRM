@@ -107,3 +107,69 @@ export function canDeleteAccount(role: AccountRole): boolean {
 export function canTransferOwnership(role: AccountRole): boolean {
   return role === "owner";
 }
+
+// ============================================================
+// Sender role & signature helpers
+// ============================================================
+
+/** Human-friendly label for roles when shown to customers or in chat. */
+export function formatRoleLabel(role?: string | null): string {
+  if (!role) return "Team Member";
+  switch (role.toLowerCase()) {
+    case "owner":
+      return "Owner";
+    case "admin":
+      return "Admin";
+    case "agent":
+      return "Team Member";
+    case "viewer":
+      return "Viewer";
+    default:
+      return role.charAt(0).toUpperCase() + role.slice(1);
+  }
+}
+
+/** Formats signature footer: ~ Name (Role) */
+export function buildSenderSignature(senderName: string, role?: string | null): string {
+  const roleLabel = formatRoleLabel(role);
+  const name = senderName.trim() || "Team";
+  return `~ ${name} (${roleLabel})`;
+}
+
+/** Appends sender signature to message body or caption without duplicating. */
+export function appendSenderSignature(
+  text: string,
+  senderName: string,
+  role?: string | null,
+): string {
+  if (!text || !text.trim()) return "";
+  const trimmed = text.trim();
+  const signature = buildSenderSignature(senderName, role);
+  if (trimmed.includes(signature)) return trimmed;
+  // If text already ends with another signature like `~ Name (...)`, replace it
+  const match = trimmed.match(/(?:\r?\n)*~ [^(\r\n]+?\s*\([^)]+\)$/);
+  if (match && match.index !== undefined) {
+    return `${trimmed.slice(0, match.index).trimEnd()}\n\n${signature}`;
+  }
+  return `${trimmed}\n\n${signature}`;
+}
+
+/** Extracts signature from a message text if present. */
+export function parseSenderSignature(text?: string | null): {
+  cleanText: string;
+  senderName?: string;
+  senderRole?: string;
+} {
+  if (!text) return { cleanText: "" };
+  const match = text.match(/(?:\r?\n)*~ ([^(\r\n]+?)\s*\(([^)]+)\)$/);
+  if (!match || match.index === undefined) {
+    return { cleanText: text };
+  }
+  const clean = text.slice(0, match.index).trimEnd();
+  return {
+    cleanText: clean,
+    senderName: match[1]?.trim(),
+    senderRole: match[2]?.trim(),
+  };
+}
+

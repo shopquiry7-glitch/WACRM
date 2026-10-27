@@ -173,7 +173,7 @@ export function MessageThread({
   const tQuote = useTranslations("Inbox.replyQuote");
   const tActions = useTranslations("Inbox.actions");
 
-  const { user } = useAuth();
+  const { user, profile, accountRole } = useAuth();
   const { getPresence, getRow, now } = usePresence();
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -241,6 +241,23 @@ export function MessageThread({
       cancelled = true;
     };
   }, []);
+
+  const profileMap = useMemo(() => {
+    const map = new Map<string, { full_name?: string | null; account_role?: string | null }>();
+    if (user?.id) {
+      map.set(user.id, {
+        full_name: profile?.full_name,
+        account_role: accountRole || profile?.account_role,
+      });
+    }
+    for (const p of profiles) {
+      map.set(p.user_id, {
+        full_name: p.full_name,
+        account_role: p.account_role,
+      });
+    }
+    return map;
+  }, [profiles, user?.id, profile?.full_name, profile?.account_role, accountRole]);
 
   // Store latest callback in a ref so fetchMessages doesn't need to
   // depend on `onMessagesLoaded` — otherwise parent re-renders cause
@@ -464,6 +481,7 @@ export function MessageThread({
         id: tempId,
         conversation_id: conversation.id,
         sender_type: "agent",
+        sender_id: user?.id,
         content_type: "text",
         content_text: text,
         status: "sending",
@@ -527,6 +545,7 @@ export function MessageThread({
         id: tempId,
         conversation_id: conversation.id,
         sender_type: "agent",
+        sender_id: user?.id,
         content_type: payload.kind,
         content_text: contentText,
         media_url: payload.mediaUrl,
@@ -587,6 +606,7 @@ export function MessageThread({
         id: tempId,
         conversation_id: conversation.id,
         sender_type: "agent",
+        sender_id: user?.id,
         content_type: "interactive",
         content_text: payload.body,
         interactive_payload: payload,
@@ -1242,6 +1262,12 @@ export function MessageThread({
                       const next = own?.emoji === emoji ? "" : emoji;
                       void postReaction(msg.id, next);
                     };
+                    const senderProf = msg.sender_id
+                      ? profileMap.get(msg.sender_id)
+                      : (msg.sender_type === "agent" && (!msg.sender_id || msg.sender_id === user?.id)
+                          ? { full_name: profile?.full_name, account_role: accountRole || profile?.account_role }
+                          : null);
+
                     return (
                       <MessageActions
                         key={msg.id}
@@ -1263,6 +1289,7 @@ export function MessageThread({
                           onToggleReaction={handlePillToggle}
                           onOpenMedia={handleMediaChange}
                           onOpenTemplates={handleOpenTemplates}
+                          senderProfile={senderProf}
                         />
                       </MessageActions>
                     );

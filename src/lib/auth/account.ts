@@ -89,6 +89,8 @@ export interface AccountContext {
   role: AccountRole;
   /** Lightweight account meta — id + name. */
   account: { id: string; name: string };
+  /** Display name of the user (from profile full_name or user metadata). */
+  userName: string;
 }
 
 /**
@@ -116,7 +118,7 @@ export async function getCurrentAccount(): Promise<AccountContext> {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("account_id, account_role")
+    .select("account_id, account_role, full_name")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -169,6 +171,11 @@ export async function getCurrentAccount(): Promise<AccountContext> {
     accountId: data.account_id,
     role: data.account_role,
     account: { id: account.id, name: account.name },
+    userName:
+      data.full_name?.trim() ||
+      (user.user_metadata?.full_name as string) ||
+      user.email?.split("@")[0] ||
+      "Team Member",
   };
 }
 

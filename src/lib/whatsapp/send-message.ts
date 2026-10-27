@@ -87,6 +87,9 @@ export interface SendMessageParams {
   /** Structured payload for `messageType === 'interactive'`. */
   interactivePayload?: InteractiveMessagePayload | null;
   replyToMessageId?: string | null;
+  senderId?: string | null;
+  senderName?: string | null;
+  senderRole?: string | null;
 }
 
 export interface SendMessageResult {
@@ -197,6 +200,9 @@ export async function sendMessageToConversation(
     templateMessageParams,
     interactivePayload,
     replyToMessageId,
+    senderId,
+    senderName,
+    senderRole,
   } = params;
   let { messageType, templateName, templateParams } = params;
 
@@ -692,6 +698,7 @@ export async function sendMessageToConversation(
     .insert({
       conversation_id: conversationId,
       sender_type: 'agent',
+      sender_id: senderId || null,
       content_type: requestedContentType,
       content_text: contentText || persistedText,
       media_url: mediaUrl || null,
