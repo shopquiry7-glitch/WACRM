@@ -134,7 +134,7 @@ export async function POST(req: Request) {
 
     if (!fs.existsSync(fullPath)) {
       return NextResponse.json(
-        { error: `Image file not found at ${relativeImagePath}` },
+        { error: `Image file not found at ${fullPath}` },
         { status: 404 }
       )
     }

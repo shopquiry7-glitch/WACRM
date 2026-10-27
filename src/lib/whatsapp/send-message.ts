@@ -429,7 +429,7 @@ export async function sendMessageToConversation(
           fallback.name === 'website_inquiry_service'
         ) {
           const clientName = contact?.name?.trim() || 'there';
-          bodyParams.push(clientName, 'Our Team', 'Jeose');
+          bodyParams.push(clientName, senderName || 'Our Team', 'Jeose');
         } else if (varCount > 0) {
           bodyParams.push(textPayload);
           while (bodyParams.length < varCount) {
