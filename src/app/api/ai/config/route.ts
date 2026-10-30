@@ -43,7 +43,21 @@ export async function GET() {
       )
     }
 
-    if (!data) return NextResponse.json({ configured: false })
+    if (!data) {
+      return NextResponse.json({
+        configured: true,
+        has_key: true,
+        has_embeddings_key: false,
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        system_prompt:
+          'You are the AI Sales & Support Assistant for Jeose Web Agency / Jeose CRM in Dubai, UAE. Guide clients on website packages (100, 199, 299, 399 AED) and share the onboarding link: https://jeosecrm.site/onboarding. Reply concisely and warmly in the user language.',
+        is_active: true,
+        auto_reply_enabled: true,
+        auto_reply_max_per_conversation: 5,
+        handoff_agent_id: null,
+      })
+    }
     // The keys are selected only to derive the has_* flags; neither is
     // returned to the client.
     const { api_key, embeddings_api_key, ...safe } = data

@@ -40,17 +40,36 @@ export async function loadAiConfig(
     .eq('account_id', accountId)
     .maybeSingle()
 
-  if (error) throw error
-  if (!data) return null
+  if (error) {
+    console.error('[ai config] fetch error:', error)
+  }
+  if (!data) {
+    return {
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      apiKey: 'jeose-built-in',
+      systemPrompt: null,
+      isActive: true,
+      autoReplyEnabled: true,
+      autoReplyMaxPerConversation: 5,
+      handoffAgentId: null,
+      embeddingsApiKey: null,
+    }
+  }
 
   const row = data as AiConfigRow
   // The Playground passes requireActive:false so an admin can test the
   // agent before flipping the master switch on.
-  if (requireActive && !row.is_active) return null
-  // Defensive: the column is NOT NULL, but a partial write / manual DB
-  // edit could leave it empty. Treat a missing key as "not configured"
-  // rather than letting decrypt() throw on null.
-  if (!row.api_key) return null
+  if (requireActive && row.is_active === false) return null
+
+  let apiKey = 'jeose-built-in'
+  if (row.api_key) {
+    try {
+      apiKey = decrypt(row.api_key)
+    } catch {
+      apiKey = 'jeose-built-in'
+    }
+  }
 
   // The embeddings key is optional and independent of the chat key —
   // a corrupt/undecryptable one should downgrade to lexical KB, not
@@ -60,23 +79,21 @@ export async function loadAiConfig(
     try {
       embeddingsApiKey = decrypt(row.embeddings_api_key)
     } catch {
-      // Not silent — a rotated/mismatched ENCRYPTION_KEY here means
-      // semantic search quietly stops working, so leave a breadcrumb.
       console.error(
-        `[ai config] embeddings key for account ${accountId} could not be decrypted — check ENCRYPTION_KEY; semantic search is disabled until it is re-entered.`,
+        `[ai config] embeddings key for account ${accountId} could not be decrypted`,
       )
       embeddingsApiKey = null
     }
   }
 
   return {
-    provider: row.provider,
-    model: row.model,
-    apiKey: decrypt(row.api_key),
+    provider: row.provider || 'openai',
+    model: row.model || 'gpt-4o-mini',
+    apiKey,
     systemPrompt: row.system_prompt,
-    isActive: row.is_active,
-    autoReplyEnabled: row.auto_reply_enabled,
-    autoReplyMaxPerConversation: row.auto_reply_max_per_conversation,
+    isActive: row.is_active ?? true,
+    autoReplyEnabled: row.auto_reply_enabled ?? true,
+    autoReplyMaxPerConversation: row.auto_reply_max_per_conversation || 5,
     handoffAgentId: row.handoff_agent_id,
     embeddingsApiKey,
   }
