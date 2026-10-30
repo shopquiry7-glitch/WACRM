@@ -33,6 +33,7 @@ import {
   Copy,
   Send,
   ExternalLink,
+  CreditCard,
 } from "lucide-react";
 import { format, isToday, isYesterday, differenceInHours } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -63,6 +64,7 @@ import { contactHandle } from "@/lib/whatsapp/wa-identity";
 import { getCountryFromPhone, formatPhoneDisplay } from "@/lib/whatsapp/phone-country";
 import { toast } from "sonner";
 import { DeleteMessageDialog } from "./delete-message-dialog";
+import { PaymentLinkDialog } from "./payment-link-dialog";
 
 interface ReplyDraft {
   id: string;
@@ -209,6 +211,7 @@ export function MessageThread({
   const [replyTo, setReplyTo] = useState<ReplyDraft | null>(null);
   const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
   const [multiDeleteDialogOpen, setMultiDeleteDialogOpen] = useState(false);
+  const [paymentLinkOpen, setPaymentLinkOpen] = useState(false);
 
   useEffect(() => {
     setSelectedMessageIds(new Set());
@@ -1246,27 +1249,38 @@ export function MessageThread({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Send Client Form Dropdown */}
+          {/* 💳 Payment Link Pill Button */}
+          <button
+            type="button"
+            onClick={() => setPaymentLinkOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#059669] hover:bg-[#047857] text-white px-3 py-1 text-xs font-semibold shadow-xs transition-all hover:scale-105 active:scale-95 shrink-0"
+            title="Send or copy Payment Link"
+          >
+            <CreditCard className="h-3.5 w-3.5" />
+            <span>Payment link</span>
+          </button>
+
+          {/* 📋 Form Link Pill Button with Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="inline-flex items-center justify-center h-7 gap-1.5 px-2.5 text-xs font-semibold rounded-md border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white px-3 py-1 text-xs font-semibold shadow-xs transition-all hover:scale-105 active:scale-95 shrink-0"
               title="Share Website Onboarding Form with this client"
             >
               <ClipboardList className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Send Form</span>
-              <ChevronDown className="h-3 w-3 opacity-70" />
+              <span>Form link</span>
+              <ChevronDown className="h-3 w-3 opacity-80" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 border-border bg-popover">
               <DropdownMenuItem
                 onClick={handleSendFormMessage}
-                className="text-xs cursor-pointer gap-2"
+                className="text-xs cursor-pointer gap-2 font-medium"
               >
                 <Send className="h-3.5 w-3.5 text-emerald-500" />
                 <span>Send Form in Chat</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleCopyFormLink}
-                className="text-xs cursor-pointer gap-2"
+                className="text-xs cursor-pointer gap-2 font-medium"
               >
                 <Copy className="h-3.5 w-3.5 text-primary" />
                 <span>Copy Form Link</span>
@@ -1276,10 +1290,10 @@ export function MessageThread({
                   const url = getClientFormUrl();
                   window.open(url, "_blank");
                 }}
-                className="text-xs cursor-pointer gap-2"
+                className="text-xs cursor-pointer gap-2 font-medium"
               >
                 <ExternalLink className="h-3.5 w-3.5 text-sky-400" />
-                <span>Preview Client Form</span>
+                <span>Open Form (New Tab)</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1455,6 +1469,14 @@ export function MessageThread({
         activeId={mediaMessageId}
         onActiveIdChange={handleMediaChange}
         contactLabel={contactDisplayName}
+      />
+
+      <PaymentLinkDialog
+        open={paymentLinkOpen}
+        onOpenChange={setPaymentLinkOpen}
+        contactName={displayName}
+        contactPhone={contact?.phone}
+        onSendMessage={(text) => handleSend(text)}
       />
     </div>
   );
