@@ -653,6 +653,21 @@ export function MessageComposer({
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* Standalone Voice Note (Mic) button */}
+          <GatedButton
+            variant="ghost"
+            size="sm"
+            canAct={!readOnly}
+            gateReason="send messages"
+            disabled={inputsDisabled || busy || recording}
+            title={readOnly ? undefined : t("voiceNote")}
+            aria-label={t("voiceNote")}
+            className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-emerald-500 transition-colors"
+            onClick={() => void startRecording()}
+          >
+            <Mic className="h-4 w-4" />
+          </GatedButton>
+
           {/* + menu — interactive messages + quick replies. Gated on the
               24h window like free-form text (interactive requires it). */}
           <DropdownMenu>
@@ -749,7 +764,7 @@ export function MessageComposer({
           `items-end` buttons below the textarea. Indented to line up
           under the textarea left edge. */}
       {!draft && !recording && (
-        <p className="mt-1 pl-[5.5rem] text-[10px] text-muted-foreground">
+        <p className="mt-1 pl-[8rem] text-[10px] text-muted-foreground">
           {t("draftHint")}
         </p>
       )}
