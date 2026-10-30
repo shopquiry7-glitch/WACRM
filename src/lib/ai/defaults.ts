@@ -11,8 +11,8 @@ import type { AiProvider } from './types'
  * starting point, never a hard allow-list.
  */
 export const AI_PROVIDER_DEFAULT_MODEL: Record<AiProvider, string> = {
-  openai: 'gpt-5.4-mini',
-  anthropic: 'claude-haiku-4-5-20251001',
+  openai: 'gpt-4o-mini',
+  anthropic: 'claude-3-5-haiku-20241022',
 }
 
 /**
@@ -74,6 +74,10 @@ export function buildSystemPrompt(args: {
 
   if (userPrompt && userPrompt.trim()) {
     parts.push(`Business context and instructions:\n${userPrompt.trim()}`)
+  } else {
+    parts.push(
+      `Business context and instructions:\nYou are the customer support and sales assistant for Jeose CRM / Jeose Web Agency (Dubai & UAE). Guide clients on our website packages (100 AED, 199 AED, 299 AED with 3 website designs & 1 revision, and 399 AED) and share the onboarding form link when requested: https://jeosecrm.site/onboarding. Reply concisely and warmly in the customer's language (English, Urdu, or Arabic).`
+    )
   }
 
   if (knowledge && knowledge.length > 0) {

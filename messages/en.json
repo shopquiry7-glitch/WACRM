@@ -1702,7 +1702,8 @@
       "fields": "Fields & tags",
       "deals": "Deals & currency",
       "members": "Team members",
-      "api": "API keys"
+      "api": "API keys",
+      "ai": "AI Assistant"
     },
     "groups": {
       "account": "Account",
