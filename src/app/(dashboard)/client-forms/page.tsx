@@ -7,8 +7,7 @@ import {
   updateSubmissionStatus,
   updateSubmissionInternalNotes,
   deleteSubmission,
-  saveNewSubmission,
-  SAMPLE_SUBMISSIONS,
+  clearAllSubmissions,
 } from "@/lib/client-forms/storage";
 import type { ClientFormSubmission, FormSubmissionStatus } from "@/types/client-forms";
 import { FormsStatsBar } from "@/components/client-forms/forms-stats-bar";
@@ -22,25 +21,22 @@ import {
   Search,
   Share2,
   ExternalLink,
-  Plus,
   MessageCircle,
   Eye,
-  Filter,
-  CheckCircle2,
-  Clock,
-  Sparkles,
-  Layers,
   Inbox,
-  ArrowUpDown,
   Building2,
   Phone,
   RotateCcw,
+  Copy,
+  Check,
+  Trash2,
 } from "lucide-react";
 
 export default function ClientFormsPage() {
   const [submissions, setSubmissions] = useState<ClientFormSubmission[]>(() =>
     getStoredSubmissions()
   );
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Sync listener for cross-tab or new submissions
   useEffect(() => {
@@ -54,26 +50,21 @@ export default function ClientFormsPage() {
     window.addEventListener("wacrm_submissions_updated", handleUpdate);
     window.addEventListener("storage", handleUpdate);
 
-    // Also try fetching from API if Supabase table exists
+    // Also fetch from API if Supabase table exists
     fetch("/api/client-forms")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.submissions && data.submissions.length > 0) {
-          // Merge API submissions with local
-          const local = getStoredSubmissions();
-          const map = new Map<string, ClientFormSubmission>();
-          local.forEach((item) => map.set(item.id, item));
-          data.submissions.forEach((item: ClientFormSubmission) => map.set(item.id, item));
-          const merged = Array.from(map.values()).sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        if (data?.submissions) {
+          // Filter out any lingering mock items
+          const cleanApi = data.submissions.filter(
+            (item: ClientFormSubmission) =>
+              !item.id?.startsWith("sub-seed-") && !item.id?.startsWith("demo-")
           );
-          setSubmissions(merged);
-          saveAllSubmissions(merged);
+          setSubmissions(cleanApi);
+          saveAllSubmissions(cleanApi);
         }
       })
-      .catch(() => {
-        // quiet fallback to local storage
-      });
+      .catch(() => {});
 
     return () => {
       window.removeEventListener("wacrm_submissions_updated", handleUpdate);
@@ -106,9 +97,7 @@ export default function ClientFormsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status }),
       });
-    } catch (e) {
-      // quiet fallback
-    }
+    } catch (e) {}
   };
 
   const handleUpdateNotes = async (id: string, notes: string) => {
@@ -124,9 +113,7 @@ export default function ClientFormsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, internalNotes: notes }),
       });
-    } catch (e) {
-      // quiet fallback
-    }
+    } catch (e) {}
   };
 
   const handleDelete = async (id: string) => {
@@ -138,61 +125,24 @@ export default function ClientFormsPage() {
       await fetch(`/api/client-forms?id=${id}`, {
         method: "DELETE",
       });
-    } catch (e) {
-      // quiet fallback
+    } catch (e) {}
+  };
+
+  const handleClearAll = () => {
+    if (confirm("Are you sure you want to clear all submissions from view?")) {
+      clearAllSubmissions();
+      setSubmissions([]);
+      toast.success("All demo & test submissions cleared.");
     }
   };
 
-  const handleAddDemo = () => {
-    const randomId = `demo-${Date.now()}`;
-    const demoRef = `WB-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newDemo: ClientFormSubmission = {
-      id: randomId,
-      referenceNumber: demoRef,
-      status: "new",
-      businessName: "Royal Perfumes & Oud",
-      businessCategory: "Retail & E-Commerce",
-      businessTagline: "Authentic Arabian Fragrances",
-      targetLocations: "UAE, Saudi Arabia, Kuwait",
-      servicesProducts: "Luxury Bukhoor, Pure Dehn Al Oud, French Eau de Parfum, Custom gift boxes.",
-      websiteType: "E-Commerce / Online Store",
-      referenceWebsites: "https://taif-al-emarat.com (minimalistic luxury layout)",
-      specialNotes: "Need online card payment + Apple Pay and WhatsApp order button.",
-      clientName: "Sultan Al-Shamsi",
-      whatsappNumber: "+971509988776",
-      callingNumber: "+971509988776",
-      email: "info@royalperfumes.ae",
-      businessAddress: "Mall of the Emirates, Ground Floor, Dubai, UAE",
-      googleMapLink: "https://maps.google.com/?q=Mall+of+the+Emirates+Dubai",
-      workingHours: "10:00 AM - 11:00 PM Daily",
-      socialLinks: {
-        instagram: "@royalperfumes.ae",
-      },
-      logoStatus: "upload",
-      logoFileName: "royal-logo-gold.svg",
-      hasExistingLogo: true,
-      selectedPackage: {
-        id: "standard",
-        title: "3 Websites Designs - 1 Revision",
-        price: 399,
-        revisions: "1 Revision Included",
-      },
-      selectedAddons: [
-        {
-          id: "google_map_seo",
-          title: "Google Map & Local SEO Setup",
-          price: 120,
-        },
-      ],
-      totalEstimate: 519,
-      internalNotes: "High-priority retail client. Prepare mockup within 24 hours.",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const updated = saveNewSubmission(newDemo);
-    setSubmissions(updated);
-    toast.success(`Demo submission added: ${newDemo.businessName}`);
+  const handleCopyLink = () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const formUrl = `${origin}/onboarding`;
+    navigator.clipboard.writeText(formUrl);
+    setCopiedLink(true);
+    toast.success("Form link copied: " + formUrl);
+    setTimeout(() => setCopiedLink(false), 2000);
   };
 
   // Filtered submissions
@@ -231,37 +181,44 @@ export default function ClientFormsPage() {
             <FileText className="h-6 w-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl md:text-2xl font-black tracking-tight text-foreground">
-                Client Onboarding Forms
-              </h1>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 text-xs font-bold text-emerald-500">
-                <Sparkles className="h-3 w-3" /> Web Intake Hub
-              </span>
-            </div>
+            <h1 className="text-xl md:text-2xl font-black tracking-tight text-foreground">
+              Client Onboarding Forms
+            </h1>
             <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
-              Review website requirements, business details &amp; packages submitted by clients
+              Review website requirements &amp; business briefs submitted by clients
             </p>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+          {submissions.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearAll}
+              title="Clear all"
+              className="rounded-xl text-xs text-muted-foreground hover:text-destructive h-9 px-2.5"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+
           <Button
             variant="outline"
             size="sm"
-            onClick={handleAddDemo}
-            className="rounded-xl text-xs gap-1.5"
+            onClick={handleCopyLink}
+            className="rounded-xl text-xs gap-1.5 h-9"
           >
-            <Plus className="h-3.5 w-3.5 text-primary" />
-            + Demo Client
+            {copiedLink ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+            {copiedLink ? "Copied" : "Copy Link"}
           </Button>
 
           <a
             href="/onboarding"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card hover:bg-muted px-3 py-2 text-xs font-semibold text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card hover:bg-muted px-3 py-2 text-xs font-semibold text-foreground transition-colors h-9"
           >
             <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
             Open Public Form
@@ -270,7 +227,7 @@ export default function ClientFormsPage() {
           <Button
             size="sm"
             onClick={() => setShareModalOpen(true)}
-            className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold gap-1.5 shadow-sm"
+            className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold gap-1.5 shadow-sm h-9"
           >
             <Share2 className="h-3.5 w-3.5" />
             Share Form Link
@@ -366,35 +323,28 @@ export default function ClientFormsPage() {
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/60 text-muted-foreground">
             <Inbox className="h-7 w-7" />
           </div>
-          <h3 className="font-bold text-base text-foreground">No submissions found</h3>
+          <h3 className="font-bold text-base text-foreground">No client forms yet</h3>
           <p className="text-xs text-muted-foreground max-w-sm">
             {search || statusFilter !== "all"
-              ? "No forms match your search filter. Try clearing filters."
-              : "Share your onboarding link with your clients on WhatsApp to start receiving website briefs!"}
+              ? "No forms match your search filter."
+              : "Share your form link with clients in WhatsApp. Once a client submits, their brief will appear here immediately."}
           </p>
           <div className="pt-2 flex items-center gap-2">
-            {search || statusFilter !== "all" ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearch("");
-                  setStatusFilter("all");
-                  setCategoryFilter("all");
-                }}
-                className="rounded-xl text-xs gap-1"
-              >
-                <RotateCcw className="h-3 w-3" /> Reset Filters
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                onClick={() => setShareModalOpen(true)}
-                className="rounded-xl text-xs gap-1.5"
-              >
-                <Share2 className="h-3.5 w-3.5" /> Share Form Link
-              </Button>
-            )}
+            <Button
+              size="sm"
+              onClick={handleCopyLink}
+              className="rounded-xl text-xs gap-1.5"
+            >
+              <Copy className="h-3.5 w-3.5" /> Copy Form Link to Share
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShareModalOpen(true)}
+              className="rounded-xl text-xs gap-1.5"
+            >
+              <Share2 className="h-3.5 w-3.5" /> Share Options
+            </Button>
           </div>
         </div>
       ) : (
@@ -469,7 +419,7 @@ export default function ClientFormsPage() {
 
                       {/* Snippet of services or notes */}
                       <p className="text-xs text-muted-foreground line-clamp-1 max-w-xl">
-                        {sub.servicesProducts || sub.specialNotes || "Website brief"}
+                        {sub.servicesProducts || sub.specialNotes || sub.websiteType || "Website brief"}
                       </p>
                     </div>
                   </div>
@@ -477,12 +427,14 @@ export default function ClientFormsPage() {
                   {/* Right: Package, Price & Actions */}
                   <div className="flex items-center justify-between lg:justify-end gap-3 w-full lg:w-auto shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-border/60">
                     <div className="text-left lg:text-right">
-                      <span className="text-[11px] text-muted-foreground block">
-                        {sub.selectedPackage.title}
+                      <span className="text-xs font-semibold text-primary block">
+                        {sub.websiteType}
                       </span>
-                      <span className="text-base font-black text-emerald-500 font-mono">
-                        AED {sub.totalEstimate}
-                      </span>
+                      {sub.totalEstimate > 0 && (
+                        <span className="text-sm font-black text-emerald-500 font-mono">
+                          AED {sub.totalEstimate}
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -531,4 +483,3 @@ export default function ClientFormsPage() {
     </div>
   );
 }
-

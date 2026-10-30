@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import {
   Globe,
   Building2,
@@ -14,32 +13,26 @@ import {
   Check,
   UploadCloud,
   Send,
-  ExternalLink,
   MessageCircle,
-  HelpCircle,
-  ShieldCheck,
-  Clock,
   MapPin,
   Mail,
-  FileText,
-  BadgeAlert,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   BUSINESS_CATEGORIES,
   WEBSITE_TYPES,
   DEFAULT_PACKAGES,
-  DEFAULT_ADDONS,
   COUNTRY_CODES,
 } from "@/lib/client-forms/constants";
 import { saveNewSubmission, generateSubmissionRef } from "@/lib/client-forms/storage";
-import type { ClientFormSubmission, FormPackage, FormAddon } from "@/types/client-forms";
+import type { ClientFormSubmission, FormPackage } from "@/types/client-forms";
 
-const DRAFT_STORAGE_KEY = "wacrm_client_onboarding_draft";
+const DRAFT_STORAGE_KEY = "wacrm_client_onboarding_draft_v2";
 
 export default function PublicOnboardingPage() {
   const [step, setStep] = useState(1);
-  const totalSteps = 4;
+  const totalSteps = 3;
 
   // Step 1: Business Profile
   const [businessName, setBusinessName] = useState("");
@@ -49,7 +42,7 @@ export default function PublicOnboardingPage() {
 
   // Step 2: Website Scope & Requirements
   const [servicesProducts, setServicesProducts] = useState("");
-  const [websiteType, setWebsiteType] = useState("E-Commerce / Online Store");
+  const [websiteType, setWebsiteType] = useState("Business / Corporate Website");
   const [referenceWebsites, setReferenceWebsites] = useState("");
   const [specialNotes, setSpecialNotes] = useState("");
 
@@ -65,11 +58,12 @@ export default function PublicOnboardingPage() {
   const [instagram, setInstagram] = useState("");
   const [tiktok, setTiktok] = useState("");
 
-  // Step 4: Package, Assets & Addons
-  const [selectedPackage, setSelectedPackage] = useState<FormPackage>(DEFAULT_PACKAGES[1]); // Standard AED 399
-  const [selectedAddons, setSelectedAddons] = useState<FormAddon[]>([]);
+  // Logo & Assets
   const [logoStatus, setLogoStatus] = useState<"upload" | "send_whatsapp" | "need_logo_design">("send_whatsapp");
   const [logoFileName, setLogoFileName] = useState("");
+
+  // Selected package
+  const [selectedPackage, setSelectedPackage] = useState<FormPackage>(DEFAULT_PACKAGES[1]); // Business AED 399
 
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,7 +82,6 @@ export default function PublicOnboardingPage() {
     if (qName) setClientName(qName);
     if (qBiz) setBusinessName(qBiz);
     if (qPhone) {
-      // detect if has +
       if (qPhone.startsWith("+")) {
         const matchingCode = COUNTRY_CODES.find((c) => qPhone.startsWith(c.code));
         if (matchingCode) {
@@ -169,18 +162,6 @@ export default function PublicOnboardingPage() {
     submittedData,
   ]);
 
-  // Calculate total estimate
-  const totalAddonsPrice = selectedAddons.reduce((acc, a) => acc + a.price, 0);
-  const totalEstimate = (selectedPackage?.price || 0) + totalAddonsPrice;
-
-  const toggleAddon = (addon: FormAddon) => {
-    if (selectedAddons.some((a) => a.id === addon.id)) {
-      setSelectedAddons(selectedAddons.filter((a) => a.id !== addon.id));
-    } else {
-      setSelectedAddons([...selectedAddons, addon]);
-    }
-  };
-
   const fullWhatsApp = `${countryCode}${phoneDigits.trim()}`;
 
   // Validate step
@@ -197,16 +178,6 @@ export default function PublicOnboardingPage() {
         return;
       }
     }
-    if (step === 3) {
-      if (!clientName.trim()) {
-        toast.error("Please enter your name or contact person.");
-        return;
-      }
-      if (!phoneDigits.trim() || phoneDigits.trim().length < 6) {
-        toast.error("Please enter a valid WhatsApp number.");
-        return;
-      }
-    }
     setStep((prev) => Math.min(prev + 1, totalSteps));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -220,7 +191,7 @@ export default function PublicOnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!businessName.trim() || !clientName.trim() || !phoneDigits.trim()) {
-      toast.error("Please fill in the required fields before submitting.");
+      toast.error("Please fill in your name, business name and WhatsApp number.");
       return;
     }
 
@@ -260,30 +231,21 @@ export default function PublicOnboardingPage() {
         price: selectedPackage.price,
         revisions: selectedPackage.revisions,
       },
-      selectedAddons: selectedAddons.map((a) => ({
-        id: a.id,
-        title: a.title,
-        price: a.price,
-      })),
-      totalEstimate,
+      totalEstimate: selectedPackage.price,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
     try {
-      // 1. Save to local storage for immediate persistence
+      // 1. Save to local storage
       saveNewSubmission(submissionPayload);
 
-      // 2. Also send to backend API to persist in Supabase
-      const res = await fetch("/api/client-forms/submit", {
+      // 2. Persist to API / Supabase
+      await fetch("/api/client-forms/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(submissionPayload),
       });
-
-      if (!res.ok) {
-        console.warn("Backend API returned non-200, local sync preserved.");
-      }
 
       // Clear draft
       if (typeof window !== "undefined") {
@@ -291,28 +253,27 @@ export default function PublicOnboardingPage() {
       }
 
       setSubmittedData(submissionPayload);
-      toast.success("Website onboarding details submitted successfully!");
+      toast.success("Details submitted successfully!");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: any) {
       console.error("Submission error:", err);
-      // Fallback is still saved locally
       setSubmittedData(submissionPayload);
-      toast.success("Submission saved! We will be in touch shortly.");
+      toast.success("Submission saved! We will contact you on WhatsApp.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // WhatsApp confirmation url generator
+  // WhatsApp confirmation url
   const getWhatsAppConfirmationUrl = () => {
     if (!submittedData) return "#";
-    const agencyNumber = "971545069473"; // agency support number
+    const agencyNumber = "971545069473";
     const text = encodeURIComponent(
       `Hello! 👋 I have just submitted the website project form for *${submittedData.businessName}* (Ref: #${submittedData.referenceNumber}).\n\n` +
-      `👤 Client: ${submittedData.clientName}\n` +
-      `📦 Package: ${submittedData.selectedPackage.title} (${submittedData.selectedPackage.price} AED)\n` +
+      `👤 Name: ${submittedData.clientName}\n` +
+      `🌐 Type: ${submittedData.websiteType}\n` +
       `📍 Location: ${submittedData.businessAddress || submittedData.targetLocations || "UAE"}\n\n` +
-      `Please review our submission and confirm.`
+      `Please check our submission.`
     );
     return `https://wa.me/${agencyNumber}?text=${text}`;
   };
@@ -323,12 +284,8 @@ export default function PublicOnboardingPage() {
   if (submittedData) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background via-card/50 to-background flex flex-col justify-between p-4 sm:p-6 md:p-10 font-sans text-foreground">
-        <div className="max-w-2xl mx-auto w-full pt-8 pb-16">
+        <div className="max-w-xl mx-auto w-full pt-8 pb-16">
           <div className="rounded-3xl border border-border/80 bg-card/90 shadow-2xl backdrop-blur-xl p-6 sm:p-10 text-center relative overflow-hidden">
-            {/* Glowing background gradient ring */}
-            <div className="absolute -top-24 -left-24 w-60 h-60 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-24 -right-24 w-60 h-60 bg-primary/15 rounded-full blur-3xl pointer-events-none" />
-
             <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-500/10 text-emerald-500 mx-auto mb-6 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
               <CheckCircle2 className="h-10 w-10 animate-bounce" />
             </div>
@@ -341,15 +298,15 @@ export default function PublicOnboardingPage() {
               Thank You, {submittedData.clientName}!
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-2 max-w-md mx-auto">
-              Your website onboarding brief for{" "}
-              <strong className="text-foreground">{submittedData.businessName}</strong> has been
-              received by our web design &amp; development team.
+              Your website details for{" "}
+              <strong className="text-foreground">{submittedData.businessName}</strong> have been
+              received by our team.
             </p>
 
             {/* Submission Reference Badge */}
             <div className="my-6 inline-flex items-center gap-2 rounded-2xl bg-muted/60 border border-border px-5 py-3 text-center">
               <span className="text-xs uppercase font-medium text-muted-foreground">
-                Your Reference Number:
+                Reference Code:
               </span>
               <span className="font-mono text-base font-bold text-primary">
                 #{submittedData.referenceNumber}
@@ -357,7 +314,7 @@ export default function PublicOnboardingPage() {
             </div>
 
             {/* Overview Card */}
-            <div className="rounded-2xl border border-border bg-background/60 p-5 text-left space-y-3 mb-8 text-xs sm:text-sm">
+            <div className="rounded-2xl border border-border bg-background/60 p-5 text-left space-y-2.5 mb-8 text-xs sm:text-sm">
               <div className="flex justify-between items-center pb-2 border-b border-border/60">
                 <span className="text-muted-foreground">Business:</span>
                 <span className="font-semibold text-foreground">{submittedData.businessName}</span>
@@ -367,26 +324,18 @@ export default function PublicOnboardingPage() {
                 <span className="font-semibold text-foreground">{submittedData.businessCategory}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-border/60">
-                <span className="text-muted-foreground">Selected Package:</span>
-                <span className="font-semibold text-primary">
-                  {submittedData.selectedPackage.title} ({submittedData.selectedPackage.price} AED)
-                </span>
+                <span className="text-muted-foreground">Website Type:</span>
+                <span className="font-semibold text-primary">{submittedData.websiteType}</span>
               </div>
-              <div className="flex justify-between items-center pb-2 border-b border-border/60">
+              <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">WhatsApp Contact:</span>
                 <span className="font-mono font-medium text-foreground">
                   {submittedData.whatsappNumber}
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Total Estimate:</span>
-                <span className="font-bold text-base text-emerald-500">
-                  {submittedData.totalEstimate} AED
-                </span>
-              </div>
             </div>
 
-            {/* Next Steps & Action */}
+            {/* Actions */}
             <div className="space-y-3">
               <a
                 href={getWhatsAppConfirmationUrl()}
@@ -417,19 +366,19 @@ export default function PublicOnboardingPage() {
 
         {/* Footer */}
         <div className="text-center text-xs text-muted-foreground py-4 border-t border-border/50">
-          Powered by <strong className="text-foreground">Jeose CRM &amp; Digital Web Studio</strong>
+          Powered by <strong className="text-foreground">Jeose CRM &bull; Agency Web Studio</strong>
         </div>
       </div>
     );
   }
 
   // ============================================================
-  // MAIN MULTI-STEP ONBOARDING FORM
+  // MAIN STREAMLINED FORM (3 CLEAN STEPS)
   // ============================================================
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-card/30 to-background flex flex-col justify-between p-3 sm:p-6 md:p-10 font-sans text-foreground">
-      {/* Top Brand Header */}
-      <header className="max-w-3xl mx-auto w-full pt-4 pb-6 flex items-center justify-between border-b border-border/60">
+      {/* Top Header */}
+      <header className="max-w-2xl mx-auto w-full pt-4 pb-6 flex items-center justify-between border-b border-border/60">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary to-violet-600 text-white shadow-md shadow-primary/20">
             <Globe className="h-6 w-6" />
@@ -437,14 +386,11 @@ export default function PublicOnboardingPage() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-black tracking-tight text-foreground">
-                Website Project Brief
+                Website Project Details
               </h2>
-              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                Client Intake
-              </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Simple 3-minute form &bull; Fill once, we build your website
+              Please share your business details so we can build your website
             </p>
           </div>
         </div>
@@ -458,14 +404,13 @@ export default function PublicOnboardingPage() {
       </header>
 
       {/* Main Container */}
-      <main className="max-w-3xl mx-auto w-full py-6 sm:py-8 flex-1">
+      <main className="max-w-2xl mx-auto w-full py-6 sm:py-8 flex-1">
         {/* Progress Bar */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground mb-2">
             <span className={step >= 1 ? "text-primary font-bold" : ""}>1. Business</span>
-            <span className={step >= 2 ? "text-primary font-bold" : ""}>2. Scope</span>
-            <span className={step >= 3 ? "text-primary font-bold" : ""}>3. Contact</span>
-            <span className={step >= 4 ? "text-primary font-bold" : ""}>4. Package</span>
+            <span className={step >= 2 ? "text-primary font-bold" : ""}>2. Website Details</span>
+            <span className={step >= 3 ? "text-primary font-bold" : ""}>3. Contact &amp; Logo</span>
           </div>
           <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
             <div
@@ -477,46 +422,39 @@ export default function PublicOnboardingPage() {
 
         {/* Form Card */}
         <form onSubmit={step === totalSteps ? handleSubmit : (e) => { e.preventDefault(); handleNextStep(); }}>
-          <div className="rounded-3xl border border-border/80 bg-card/80 shadow-xl backdrop-blur-md p-5 sm:p-8">
-            {/* ============================================================
-                STEP 1: BUSINESS PROFILE
-               ============================================================ */}
+          <div className="rounded-3xl border border-border/80 bg-card/90 shadow-xl backdrop-blur-md p-5 sm:p-8 space-y-6">
+            {/* STEP 1: BUSINESS PROFILE */}
             {step === 1 && (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 <div>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-2">
                     <Building2 className="h-3.5 w-3.5" /> Step 1: Business Profile
                   </div>
                   <h3 className="text-xl sm:text-2xl font-black text-foreground">
-                    Tell us about your business
+                    Business Information
                   </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    This will appear as the main branding on your website header and pages.
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your brand name and category for the website
                   </p>
                 </div>
 
                 {/* Business Name */}
-                <div className="space-y-2">
-                  <label className="text-xs sm:text-sm font-bold text-foreground flex items-center justify-between">
-                    <span>
-                      Business / Brand Name <span className="text-destructive">*</span>
-                    </span>
-                    <span className="text-[11px] text-muted-foreground font-normal">
-                      e.g., Mahra Fashion, Al-Baraka Real Estate
-                    </span>
+                <div className="space-y-1.5">
+                  <label className="text-xs sm:text-sm font-bold text-foreground">
+                    Business / Brand Name <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="text"
                     required
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
-                    placeholder="Enter your company or brand name..."
+                    placeholder="e.g. Mahra Fashion, Al-Baraka Properties"
                     className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-sm"
                   />
                 </div>
 
                 {/* Business Category */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-xs sm:text-sm font-bold text-foreground">
                     Business Category <span className="text-destructive">*</span>
                   </label>
@@ -531,9 +469,8 @@ export default function PublicOnboardingPage() {
                       </option>
                     ))}
                   </select>
-                  {/* Category Quick Chips */}
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    {["Clothing & Fashion", "Retail & E-Commerce", "Restaurant & Cafe", "Real Estate & Property", "Beauty, Salon & Spa"].map((c) => (
+                    {["Clothing & Fashion", "Retail & E-Commerce", "Restaurant & Cafe", "Real Estate & Property", "Beauty, Salon & Spa", "Other"].map((c) => (
                       <button
                         type="button"
                         key={c}
@@ -550,59 +487,56 @@ export default function PublicOnboardingPage() {
                   </div>
                 </div>
 
-                {/* Slogan / Tagline */}
-                <div className="space-y-2">
+                {/* Tagline */}
+                <div className="space-y-1.5">
                   <label className="text-xs sm:text-sm font-bold text-foreground flex items-center justify-between">
-                    <span>Tagline or Slogan</span>
+                    <span>Slogan or Tagline</span>
                     <span className="text-[11px] text-muted-foreground font-normal">Optional</span>
                   </label>
                   <input
                     type="text"
                     value={businessTagline}
                     onChange={(e) => setBusinessTagline(e.target.value)}
-                    placeholder="e.g., Luxury Abayas in Dubai, Quality You Can Trust"
+                    placeholder="e.g. Luxury Abayas & Evening Dresses"
                     className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-sm"
                   />
                 </div>
 
                 {/* Target Locations */}
-                <div className="space-y-2">
-                  <label className="text-xs sm:text-sm font-bold text-foreground flex items-center justify-between">
-                    <span>Target Service Areas / Countries</span>
-                    <span className="text-[11px] text-muted-foreground font-normal">Where are your customers?</span>
+                <div className="space-y-1.5">
+                  <label className="text-xs sm:text-sm font-bold text-foreground">
+                    Target Cities / Countries
                   </label>
                   <input
                     type="text"
                     value={targetLocations}
                     onChange={(e) => setTargetLocations(e.target.value)}
-                    placeholder="e.g., UAE, Dubai, Saudi Arabia, Qatar, Worldwide"
+                    placeholder="e.g. UAE, Dubai, Saudi Arabia, Qatar, Worldwide"
                     className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-sm"
                   />
                 </div>
               </div>
             )}
 
-            {/* ============================================================
-                STEP 2: WEBSITE SCOPE & CONTENT
-               ============================================================ */}
+            {/* STEP 2: WEBSITE SCOPE & REQUIREMENTS */}
             {step === 2 && (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 <div>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-2">
-                    <Layers className="h-3.5 w-3.5" /> Step 2: Website Requirements
+                    <Layers className="h-3.5 w-3.5" /> Step 2: Website Scope
                   </div>
                   <h3 className="text-xl sm:text-2xl font-black text-foreground">
-                    What does your website need?
+                    Website Requirements
                   </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    Describe your products, website goals, and any design preferences.
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Describe your products and website preferences
                   </p>
                 </div>
 
                 {/* Website Type Selection */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-xs sm:text-sm font-bold text-foreground">
-                    What type of website do you want?
+                    What type of website do you need?
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {WEBSITE_TYPES.map((wt) => {
@@ -618,7 +552,7 @@ export default function PublicOnboardingPage() {
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-sm text-foreground">{wt.title}</span>
+                            <span className="font-bold text-xs sm:text-sm text-foreground">{wt.title}</span>
                             <div
                               className={`h-4 w-4 rounded-full border flex items-center justify-center ${
                                 isSelected ? "border-primary bg-primary text-white" : "border-muted-foreground"
@@ -634,79 +568,72 @@ export default function PublicOnboardingPage() {
                   </div>
                 </div>
 
-                {/* Services / Products */}
-                <div className="space-y-2">
-                  <label className="text-xs sm:text-sm font-bold text-foreground flex items-center justify-between">
-                    <span>
-                      Products or Services to include <span className="text-destructive">*</span>
-                    </span>
-                    <span className="text-[11px] text-muted-foreground font-normal">
-                      List your main offerings
-                    </span>
+                {/* Products & Services */}
+                <div className="space-y-1.5">
+                  <label className="text-xs sm:text-sm font-bold text-foreground">
+                    Products or Services List <span className="text-destructive">*</span>
                   </label>
                   <textarea
                     rows={3}
                     required
                     value={servicesProducts}
                     onChange={(e) => setServicesProducts(e.target.value)}
-                    placeholder="e.g., Party Abayas, Silk Scarves, Custom Alterations. Or: Dental cleaning, teeth whitening, braces..."
+                    placeholder="e.g. Abayas, Evening dresses, Custom stitching, Handbags. Or your company services..."
                     className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-sm"
                   />
                 </div>
 
                 {/* Reference Website Links */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-xs sm:text-sm font-bold text-foreground flex items-center justify-between">
-                    <span>Reference Websites or Style You Like</span>
+                    <span>Reference Websites or Links You Like</span>
                     <span className="text-[11px] text-muted-foreground font-normal">Optional</span>
                   </label>
                   <input
                     type="text"
                     value={referenceWebsites}
                     onChange={(e) => setReferenceWebsites(e.target.value)}
-                    placeholder="e.g., https://apple.com, or 'clean modern white and gold luxury look'"
+                    placeholder="e.g. https://example.com, or 'luxury clean white & gold design'"
                     className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-sm"
                   />
                 </div>
 
-                {/* Special Instructions / Notes */}
-                <div className="space-y-2">
+                {/* Special Instructions */}
+                <div className="space-y-1.5">
                   <label className="text-xs sm:text-sm font-bold text-foreground flex items-center justify-between">
-                    <span>Special Instructions or Notes</span>
+                    <span>Special Notes or Instructions</span>
                     <span className="text-[11px] text-muted-foreground font-normal">
-                      e.g., &quot;all products will be sent on WhatsApp&quot;
+                      e.g. &quot;All photos are in WhatsApp chat&quot;
                     </span>
                   </label>
                   <textarea
                     rows={2}
                     value={specialNotes}
                     onChange={(e) => setSpecialNotes(e.target.value)}
-                    placeholder="Any specific instructions, required languages (English/Arabic), deadlines, etc."
+                    placeholder="Any specific instructions, deadlines, languages (Arabic/English), etc."
                     className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-sm"
                   />
                 </div>
               </div>
             )}
 
-            {/* ============================================================
-                STEP 3: CONTACT & LOCATION
-               ============================================================ */}
+            {/* STEP 3: CONTACT DETAILS & LOGO */}
             {step === 3 && (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 <div>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-2">
-                    <Phone className="h-3.5 w-3.5" /> Step 3: Contact &amp; Details
+                    <Phone className="h-3.5 w-3.5" /> Step 3: Contact &amp; Logo
                   </div>
                   <h3 className="text-xl sm:text-2xl font-black text-foreground">
-                    How can we reach you?
+                    Contact &amp; Assets
                   </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    We will send website previews and mockups directly to your WhatsApp.
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Where can we reach you and send your website preview?
                   </p>
                 </div>
 
-                {/* Contact Person Name */}
-                <div className="space-y-2">
+                {/* Contact Name */}
+                <div className="space-y-1.5">
                   <label className="text-xs sm:text-sm font-bold text-foreground">
                     Your Name / Contact Person <span className="text-destructive">*</span>
                   </label>
@@ -721,7 +648,7 @@ export default function PublicOnboardingPage() {
                 </div>
 
                 {/* WhatsApp Number with Country Code */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-xs sm:text-sm font-bold text-foreground flex items-center justify-between">
                     <span>
                       WhatsApp Number <span className="text-destructive">*</span>
@@ -738,7 +665,7 @@ export default function PublicOnboardingPage() {
                     >
                       {COUNTRY_CODES.map((c) => (
                         <option key={c.code} value={c.code}>
-                          {c.flag} {c.code} ({c.country})
+                          {c.flag} {c.code}
                         </option>
                       ))}
                     </select>
@@ -752,12 +679,12 @@ export default function PublicOnboardingPage() {
                     />
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Full number with code: <span className="font-mono text-foreground font-semibold">{fullWhatsApp}</span>
+                    Full number: <span className="font-mono text-foreground font-semibold">{fullWhatsApp}</span>
                   </p>
                 </div>
 
                 {/* Email Address */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-xs sm:text-sm font-bold text-foreground flex items-center justify-between">
                     <span>Email Address</span>
                     <span className="text-[11px] text-muted-foreground font-normal">Optional</span>
@@ -766,123 +693,50 @@ export default function PublicOnboardingPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g., info@yourbrand.com or gmail"
+                    placeholder="e.g. info@yourbrand.com"
                     className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-sm"
                   />
                 </div>
 
                 {/* Business Physical Address */}
-                <div className="space-y-2">
-                  <label className="text-xs sm:text-sm font-bold text-foreground flex items-center justify-between">
-                    <span>Complete Business Address / Location</span>
-                    <span className="text-[11px] text-muted-foreground font-normal">To show on website footer/contact</span>
+                <div className="space-y-1.5">
+                  <label className="text-xs sm:text-sm font-bold text-foreground">
+                    Complete Business Address / Location
                   </label>
                   <input
                     type="text"
                     value={businessAddress}
                     onChange={(e) => setBusinessAddress(e.target.value)}
-                    placeholder="e.g., Deira Gold Souq, Gate No. 2, Dubai, UAE"
+                    placeholder="e.g. Deira Gold Souq Gate 2, Dubai, UAE"
                     className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-sm"
                   />
                 </div>
 
-                {/* Working Hours & Socials (Two columns) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                {/* Working Hours & Socials */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
                     <label className="text-xs font-bold text-foreground">Working Hours</label>
                     <input
                       type="text"
                       value={workingHours}
                       onChange={(e) => setWorkingHours(e.target.value)}
-                      placeholder="e.g., Mon - Sun 09:00 AM - 12:00 Night"
-                      className="w-full rounded-2xl border border-border bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-sm"
+                      placeholder="e.g. Mon - Sun 09:00 AM - 12:00 Night"
+                      className="w-full rounded-2xl border border-border bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-sm"
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="text-xs font-bold text-foreground">Instagram / TikTok</label>
                     <input
                       type="text"
                       value={instagram}
                       onChange={(e) => setInstagram(e.target.value)}
-                      placeholder="e.g., @mahra.fashion"
-                      className="w-full rounded-2xl border border-border bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-sm"
+                      placeholder="e.g. @mahra.fashion"
+                      className="w-full rounded-2xl border border-border bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-sm"
                     />
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* ============================================================
-                STEP 4: PACKAGE, ASSETS & ADDONS
-               ============================================================ */}
-            {step === 4 && (
-              <div className="space-y-6">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-2">
-                    <Sparkles className="h-3.5 w-3.5" /> Step 4: Package &amp; Launch
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-black text-foreground">
-                    Select Your Website Package
-                  </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    All packages include Admin Panel, Mobile Friendly layout and WhatsApp Integration.
-                  </p>
-                </div>
-
-                {/* Package Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {DEFAULT_PACKAGES.map((pkg) => {
-                    const isSelected = selectedPackage.id === pkg.id;
-                    return (
-                      <div
-                        key={pkg.id}
-                        onClick={() => setSelectedPackage(pkg)}
-                        className={`cursor-pointer rounded-2xl border p-4 transition-all relative flex flex-col justify-between ${
-                          isSelected
-                            ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-md"
-                            : "bg-background/60 border-border hover:bg-muted/50 hover:border-border/80"
-                        }`}
-                      >
-                        {pkg.popular && (
-                          <span className="absolute -top-2.5 right-3 rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 shadow-sm uppercase">
-                            Most Popular
-                          </span>
-                        )}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                              {pkg.revisions}
-                            </span>
-                            <div
-                              className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-                                isSelected ? "border-primary bg-primary text-white" : "border-muted-foreground"
-                              }`}
-                            >
-                              {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
-                            </div>
-                          </div>
-                          <h4 className="font-extrabold text-sm sm:text-base text-foreground leading-snug">
-                            {pkg.title}
-                          </h4>
-                          <div className="mt-2 text-xl font-black text-primary">
-                            AED {pkg.price}
-                          </div>
-                        </div>
-
-                        <ul className="mt-4 space-y-1.5 text-[11px] text-muted-foreground border-t border-border/60 pt-3">
-                          {pkg.features.map((f, i) => (
-                            <li key={i} className="flex items-center gap-1.5">
-                              <Check className="h-3 w-3 text-emerald-500 shrink-0" />
-                              <span>{f}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Logo & Assets Section */}
+                {/* Logo Section */}
                 <div className="rounded-2xl border border-border bg-background/50 p-4 space-y-3">
                   <label className="text-xs sm:text-sm font-bold text-foreground">
                     Do you have a business logo?
@@ -898,7 +752,7 @@ export default function PublicOnboardingPage() {
                       }`}
                     >
                       <span className="block font-bold">📲 Will send on WhatsApp</span>
-                      <span className="text-[10px] opacity-80">Easiest option for clients</span>
+                      <span className="text-[10px] opacity-80">Send in chat</span>
                     </button>
 
                     <button
@@ -910,7 +764,7 @@ export default function PublicOnboardingPage() {
                           : "bg-muted/40 border-border text-muted-foreground hover:bg-muted"
                       }`}
                     >
-                      <span className="block font-bold">📁 Upload Logo File</span>
+                      <span className="block font-bold">📁 Upload Logo</span>
                       <span className="text-[10px] opacity-80">PNG, JPG, Vector</span>
                     </button>
 
@@ -923,8 +777,8 @@ export default function PublicOnboardingPage() {
                           : "bg-muted/40 border-border text-muted-foreground hover:bg-muted"
                       }`}
                     >
-                      <span className="block font-bold">✨ Need Logo Designed</span>
-                      <span className="text-[10px] opacity-80">We design it for you</span>
+                      <span className="block font-bold">✨ Need Logo Created</span>
+                      <span className="text-[10px] opacity-80">Design for me</span>
                     </button>
                   </div>
 
@@ -933,7 +787,7 @@ export default function PublicOnboardingPage() {
                       <label className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl p-4 cursor-pointer hover:bg-muted/30 transition-colors">
                         <UploadCloud className="h-6 w-6 text-primary mb-1" />
                         <span className="text-xs font-semibold text-foreground">
-                          {logoFileName ? `Selected: ${logoFileName}` : "Click to select logo from your device"}
+                          {logoFileName ? `Selected: ${logoFileName}` : "Click to select logo file"}
                         </span>
                         <input
                           type="file"
@@ -948,72 +802,11 @@ export default function PublicOnboardingPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Add-on Services */}
-                <div className="space-y-2">
-                  <label className="text-xs sm:text-sm font-bold text-foreground">
-                    Optional Add-on Services:
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {DEFAULT_ADDONS.map((addon) => {
-                      const isChecked = selectedAddons.some((a) => a.id === addon.id);
-                      return (
-                        <div
-                          key={addon.id}
-                          onClick={() => toggleAddon(addon)}
-                          className={`cursor-pointer rounded-xl border p-3 flex items-center justify-between transition-all ${
-                            isChecked
-                              ? "bg-emerald-500/10 border-emerald-500/40 text-foreground"
-                              : "bg-background/50 border-border hover:bg-muted/40 text-muted-foreground"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div
-                              className={`h-4 w-4 rounded-md border flex items-center justify-center ${
-                                isChecked ? "border-emerald-500 bg-emerald-500 text-white" : "border-muted-foreground"
-                              }`}
-                            >
-                              {isChecked && <Check className="h-2.5 w-2.5 stroke-[3]" />}
-                            </div>
-                            <div>
-                              <span className="text-xs font-bold text-foreground block">
-                                {addon.title}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground">
-                                {addon.description}
-                              </span>
-                            </div>
-                          </div>
-                          <span className="text-xs font-mono font-bold text-emerald-500 shrink-0 ml-2">
-                            +AED {addon.price}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Total Price Bar */}
-                <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-muted-foreground block font-medium">
-                      Estimated Project Investment:
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Package: {selectedPackage.title}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-2xl font-black text-primary font-mono">
-                      AED {totalEstimate}
-                    </span>
-                  </div>
-                </div>
               </div>
             )}
 
-            {/* Bottom Form Actions */}
-            <div className="mt-8 pt-5 border-t border-border flex items-center justify-between gap-3">
+            {/* Bottom Actions */}
+            <div className="pt-4 border-t border-border flex items-center justify-between gap-3">
               {step > 1 ? (
                 <button
                   type="button"
@@ -1044,7 +837,7 @@ export default function PublicOnboardingPage() {
                     <>Submitting...</>
                   ) : (
                     <>
-                      <Send className="h-4 w-4" /> Submit Website Brief
+                      <Send className="h-4 w-4" /> Submit Website Details
                     </>
                   )}
                 </button>
@@ -1055,7 +848,7 @@ export default function PublicOnboardingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="max-w-3xl mx-auto w-full pt-4 pb-2 text-center text-xs text-muted-foreground border-t border-border/40">
+      <footer className="max-w-2xl mx-auto w-full pt-4 pb-2 text-center text-xs text-muted-foreground border-t border-border/40">
         <p>&copy; {new Date().getFullYear()} Jeose CRM &bull; Agency Website Onboarding Portal</p>
       </footer>
     </div>

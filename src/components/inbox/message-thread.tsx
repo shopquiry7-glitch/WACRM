@@ -29,6 +29,10 @@ import {
   PanelRightClose,
   Trash2,
   X,
+  ClipboardList,
+  Copy,
+  Send,
+  ExternalLink,
 } from "lucide-react";
 import { format, isToday, isYesterday, differenceInHours } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -993,6 +997,29 @@ export function MessageThread({
     [conversation, onAssignChange, t],
   );
 
+  const getClientFormUrl = useCallback(() => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const base = `${origin}/onboarding`;
+    const params = new URLSearchParams();
+    if (contact?.name) params.set("name", contact.name);
+    if (contact?.phone) params.set("phone", contact.phone);
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
+  }, [contact?.name, contact?.phone]);
+
+  const handleCopyFormLink = useCallback(() => {
+    const url = getClientFormUrl();
+    navigator.clipboard.writeText(url);
+    toast.success("Client form link copied to clipboard!");
+  }, [getClientFormUrl]);
+
+  const handleSendFormMessage = useCallback(() => {
+    const url = getClientFormUrl();
+    const greeting = contact?.name ? `Hello ${contact.name}! 👋` : "Hello! 👋";
+    const msg = `${greeting}\n\nPlease take 2-3 minutes to fill out our website project form so we can start building your website:\n\n🔗 ${url}\n\nOnce submitted, our team will immediately review your requirements!`;
+    handleSend(msg);
+  }, [contact?.name, getClientFormUrl, handleSend]);
+
   // Empty state — same WhatsApp-style doodle background as the active
   // thread below, so swapping between empty/selected doesn't change the
   // pattern under the user's eye.
@@ -1216,6 +1243,44 @@ export function MessageThread({
                   </DropdownMenuItem>
                 </>
               )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Send Client Form Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="inline-flex items-center justify-center h-7 gap-1.5 px-2.5 text-xs font-semibold rounded-md border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors shadow-xs"
+              title="Share Website Onboarding Form with this client"
+            >
+              <ClipboardList className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Send Form</span>
+              <ChevronDown className="h-3 w-3 opacity-70" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 border-border bg-popover">
+              <DropdownMenuItem
+                onClick={handleSendFormMessage}
+                className="text-xs cursor-pointer gap-2"
+              >
+                <Send className="h-3.5 w-3.5 text-emerald-500" />
+                <span>Send Form in Chat</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleCopyFormLink}
+                className="text-xs cursor-pointer gap-2"
+              >
+                <Copy className="h-3.5 w-3.5 text-primary" />
+                <span>Copy Form Link</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  const url = getClientFormUrl();
+                  window.open(url, "_blank");
+                }}
+                className="text-xs cursor-pointer gap-2"
+              >
+                <ExternalLink className="h-3.5 w-3.5 text-sky-400" />
+                <span>Preview Client Form</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

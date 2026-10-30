@@ -24,93 +24,58 @@ export const WEBSITE_TYPES = [
   },
   {
     id: "business",
-    title: "Business / Corporate Showcase",
+    title: "Business / Corporate Website",
     desc: "Present your company, services, trust badges & client reviews",
+  },
+  {
+    id: "landing_page",
+    title: "One-Page Landing Page",
+    desc: "Clean single page designed for ads & WhatsApp inquiries",
   },
   {
     id: "portfolio",
     title: "Portfolio / Agency",
     desc: "Showcase creative work, projects, photography or services",
   },
-  {
-    id: "landing_page",
-    title: "One-Page Landing Page",
-    desc: "High-converting single page designed for ad campaigns",
-  },
-  {
-    id: "catalog_menu",
-    title: "Digital Catalog / Menu",
-    desc: "QR code digital catalog, restaurant menu or PDF browser",
-  },
 ] as const;
 
 export const DEFAULT_PACKAGES: FormPackage[] = [
   {
-    id: "starter",
-    title: "3 Websites Designs - No Revisions",
+    id: "landing",
+    title: "Landing Page Website",
     price: 299,
-    revisions: "No Revisions",
+    revisions: "Complete Ready-to-Launch",
     features: [
-      "3 Modern Layout Concepts",
-      "Mobile & Tablet Responsive",
-      "WhatsApp Direct Button",
-      "Admin Panel Included",
-      "Fast 48-Hour Turnaround",
+      "Modern Responsive Layout",
+      "Mobile & Tablet Friendly",
+      "WhatsApp Direct Chat Button",
+      "Fast 48-Hour Delivery",
     ],
   },
   {
-    id: "standard",
-    title: "3 Websites Designs - 1 Revision",
+    id: "business",
+    title: "Business / Company Website",
     price: 399,
-    revisions: "1 Comprehensive Revision",
+    revisions: "Multi-Page Complete Website",
     popular: true,
     features: [
-      "3 Modern Layout Concepts",
-      "1 Round of Free Revisions",
+      "Multi-Page Company Layout",
       "Mobile, Tablet & Desktop Responsive",
       "WhatsApp Direct Button & Contact Form",
       "Admin Panel & Basic SEO Setup",
     ],
   },
   {
-    id: "premium",
-    title: "3 Websites Designs - 2 Revisions",
+    id: "ecommerce",
+    title: "E-Commerce Store Website",
     price: 499,
-    revisions: "2 Comprehensive Revisions",
+    revisions: "Full Online Store",
     features: [
-      "3 Premium Custom Layouts",
-      "2 Rounds of Revisions",
-      "Full Product / Services Setup",
+      "Product Catalog & Category Setup",
+      "WhatsApp Instant Order System",
       "Google Map & Social Media Links",
-      "Priority VIP Turnaround",
+      "Admin Panel to Manage Products",
     ],
-  },
-];
-
-export const DEFAULT_ADDONS: FormAddon[] = [
-  {
-    id: "company_profile",
-    title: "Company Profile Design (PDF)",
-    price: 100,
-    description: "Professional digital PDF brochure for corporate clients",
-  },
-  {
-    id: "google_map_seo",
-    title: "Google Map & Local SEO Setup",
-    price: 120,
-    description: "Location pinning on Google Maps & metadata indexing",
-  },
-  {
-    id: "social_integration",
-    title: "Social Media Feeds & Links",
-    price: 80,
-    description: "Embed live Instagram grid and TikTok links",
-  },
-  {
-    id: "express_delivery",
-    title: "24-Hour Express Launch",
-    price: 150,
-    description: "Rush development for urgent marketing campaigns",
   },
 ];
 
@@ -126,4 +91,3 @@ export const COUNTRY_CODES = [
   { code: "+44", country: "UK", flag: "🇬🇧" },
   { code: "+1", country: "US/Canada", flag: "🇺🇸" },
 ];
-
