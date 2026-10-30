@@ -40,3 +40,4 @@ export function getZiinaLinkForAmount(amount?: number): string {
   const match = ZIINA_PAYMENT_LINKS.find((p) => p.amount === amount);
   return match ? match.url : ZIINA_PAYMENT_LINKS[2].url;
 }
+

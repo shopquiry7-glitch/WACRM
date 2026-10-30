@@ -132,7 +132,10 @@ export function formatRoleLabel(role?: string | null): string {
 /** Formats signature footer: ~ Name (Role) */
 export function buildSenderSignature(senderName: string, role?: string | null): string {
   const roleLabel = formatRoleLabel(role);
-  const name = senderName.trim() || "Team";
+  let name = senderName.trim() || "Team";
+  if (name.toUpperCase() === "MA") {
+    name = "Jeose";
+  }
   return `~ ${name} (${roleLabel})`;
 }
 
