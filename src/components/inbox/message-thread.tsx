@@ -1023,6 +1023,16 @@ export function MessageThread({
     handleSend(msg);
   }, [contact?.name, getClientFormUrl, handleSend]);
 
+  const handleSendZiinaPayment = useCallback(
+    (amount: number, url: string) => {
+      const greeting = contact?.name ? `Hello ${contact.name}! 👋` : "Hello! 👋";
+      const msg = `${greeting}\n\nPlease use the following secure payment link to complete your payment of *${amount} AED*:\n\n💳 ${url}\n\nYou can pay securely via Apple Pay, Google Pay, or Card.\nOnce paid, please share the screenshot/confirmation here. Thank you!`;
+      handleSend(msg);
+      toast.success(`${amount} AED payment link sent to WhatsApp chat!`);
+    },
+    [contact?.name, handleSend],
+  );
+
   // Empty state — same WhatsApp-style doodle background as the active
   // thread below, so swapping between empty/selected doesn't change the
   // pattern under the user's eye.
@@ -1249,16 +1259,70 @@ export function MessageThread({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* 💳 Payment Link Pill Button */}
-          <button
-            type="button"
-            onClick={() => setPaymentLinkOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-[#059669] hover:bg-[#047857] text-white px-3 py-1 text-xs font-semibold shadow-xs transition-all hover:scale-105 active:scale-95 shrink-0"
-            title="Send or copy Payment Link"
-          >
-            <CreditCard className="h-3.5 w-3.5" />
-            <span>Payment link</span>
-          </button>
+          {/* 💳 Payment Link Pill Button with Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#059669] hover:bg-[#047857] text-white px-3 py-1 text-xs font-semibold shadow-xs transition-all hover:scale-105 active:scale-95 shrink-0"
+              title="Send Ziina Payment Link"
+            >
+              <CreditCard className="h-3.5 w-3.5" />
+              <span>Payment link</span>
+              <ChevronDown className="h-3 w-3 opacity-80" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 border-border bg-popover">
+              <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/60">
+                Ziina Payment Links
+              </div>
+              <DropdownMenuItem
+                onClick={() => handleSendZiinaPayment(399, "https://pay.ziina.com/Jeose/-hO_FhkT1?source=app")}
+                className="text-xs cursor-pointer gap-2 font-medium justify-between"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Send className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>Send 399 AED</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground">Website</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleSendZiinaPayment(299, "https://pay.ziina.com/Jeose/AJuoq0ug8?source=app")}
+                className="text-xs cursor-pointer gap-2 font-medium justify-between"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Send className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>Send 299 AED</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground">Landing</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleSendZiinaPayment(199, "https://pay.ziina.com/Jeose/3qvMbRf6q?source=app")}
+                className="text-xs cursor-pointer gap-2 font-medium justify-between"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Send className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>Send 199 AED</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground">Promo</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleSendZiinaPayment(100, "https://pay.ziina.com/Jeose/U68Mx0WHl?source=app")}
+                className="text-xs cursor-pointer gap-2 font-medium justify-between"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Send className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>Send 100 AED</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground">Deposit</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-border" />
+              <DropdownMenuItem
+                onClick={() => setPaymentLinkOpen(true)}
+                className="text-xs cursor-pointer gap-2 font-medium text-primary"
+              >
+                <CreditCard className="h-3.5 w-3.5" />
+                <span>All Options &amp; Copy Links...</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* 📋 Form Link Pill Button with Dropdown */}
           <DropdownMenu>

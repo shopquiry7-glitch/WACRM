@@ -17,6 +17,7 @@ import {
   MapPin,
   Mail,
   Clock,
+  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -25,6 +26,7 @@ import {
   DEFAULT_PACKAGES,
   COUNTRY_CODES,
 } from "@/lib/client-forms/constants";
+import { getZiinaLinkForAmount } from "@/lib/client-forms/payment-links";
 import { saveNewSubmission, generateSubmissionRef } from "@/lib/client-forms/storage";
 import type { ClientFormSubmission, FormPackage } from "@/types/client-forms";
 
@@ -337,6 +339,16 @@ export default function PublicOnboardingPage() {
 
             {/* Actions */}
             <div className="space-y-3">
+              <a
+                href={getZiinaLinkForAmount(submittedData.totalEstimate)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white py-3.5 px-6 font-bold text-sm sm:text-base shadow-lg shadow-[#059669]/20 transition-all hover:scale-[1.01]"
+              >
+                <CreditCard className="h-5 w-5" />
+                Pay via Ziina (Apple Pay / Card)
+              </a>
+
               <a
                 href={getWhatsAppConfirmationUrl()}
                 target="_blank"
