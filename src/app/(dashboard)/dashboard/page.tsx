@@ -14,6 +14,7 @@ import {
   Globe,
   Sparkles,
   ReceiptText,
+  ClipboardList,
   ArrowRight,
   Settings,
   MapPin,
@@ -183,6 +184,13 @@ export default function DashboardPage() {
                 Feature Store (All Free)
               </Link>
               <Link
+                href="/client-forms"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-2 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-colors shadow-xs"
+              >
+                <ClipboardList className="h-3.5 w-3.5 text-emerald-400" />
+                Client Forms &amp; Briefs
+              </Link>
+              <Link
                 href="/domain-automation"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
               >
@@ -228,6 +236,13 @@ export default function DashboardPage() {
                 <MessageSquare className="h-3.5 w-3.5" />
                 Open WhatsApp Inbox
                 <ArrowRight className="h-3 w-3" />
+              </Link>
+              <Link
+                href="/client-forms"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-2 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-colors shadow-xs"
+              >
+                <ClipboardList className="h-3.5 w-3.5 text-emerald-400" />
+                Client Forms
               </Link>
               <Link
                 href="/invoices"

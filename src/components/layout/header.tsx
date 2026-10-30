@@ -28,6 +28,7 @@ const pageTitles: Record<string, string> = {
   "/lead-extractor": "leadExtractor",
   "/pipelines": "pipelines",
   "/invoices": "invoices",
+  "/client-forms": "clientForms",
   "/domain-automation": "domainAutomation",
   "/voice-calling": "aiCallingAgent",
   "/ai-calling": "aiCallingAgent",

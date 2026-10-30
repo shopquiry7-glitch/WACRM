@@ -45,3 +45,4 @@ next-env.d.ts
 # ignored from git sync
 .github/
 deploy.log
+dist-cpanel/

@@ -11,6 +11,7 @@ import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
   Bell,
   Bot,
+  ClipboardList,
   Crown,
   GitBranch,
   Globe,
@@ -109,6 +110,12 @@ const navItems: NavItem[] = [
   { href: "/pipelines", labelKey: "pipelines", icon: GitBranch },
   { href: "/broadcasts", labelKey: "broadcasts", icon: Radio },
   { href: "/automations", labelKey: "automations", icon: Zap },
+  {
+    href: "/client-forms",
+    labelKey: "clientForms",
+    icon: ClipboardList,
+    sectionTitle: "Client Onboarding",
+  },
   {
     href: "/invoices",
     labelKey: "invoices",
