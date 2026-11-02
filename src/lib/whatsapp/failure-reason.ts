@@ -84,16 +84,17 @@ export function formatMessageFailureReason(message: FailedMessageLike): string |
     return `Meta Auth Error (${code}): Invalid or expired access token. Please verify WhatsApp configuration in Settings.`;
   }
 
-  // 131042: Business eligibility payment issue / unsettled payments
+  // 131042: Business eligibility payment issue / unsettled payments / payment method error
   if (
     code === 131042 ||
     titleLower.includes("payment issue") ||
     detailsLower.includes("unsettled payment") ||
-    detailsLower.includes("billing_hub")
+    detailsLower.includes("billing_hub") ||
+    detailsLower.includes("payment method")
   ) {
-    return details
-      ? `Meta Billing Issue (131042): ${details}`
-      : "Meta Billing Issue (131042): WhatsApp sending paused due to an unsettled payment on Meta Business Manager.";
+    const defaultMetaUrl = "https://business.facebook.com/billing_hub/accounts/details/?business_id=174853050517617&asset_id=1618556389982785&wizard_name=PAY_NOW&account_type=whatsapp-business-account";
+    const msg = details || "WhatsApp sending paused due to a payment method or billing issue on Meta Business Manager.";
+    return msg.includes("http") ? `Meta Billing Issue (131042): ${msg}` : `Meta Billing Issue (131042): ${msg} Visit ${defaultMetaUrl} to resolve this issue.`;
   }
 
   // Deduplicate if title and details are identical or redundant (avoids "Message undeliverable — Message Undeliverable.")

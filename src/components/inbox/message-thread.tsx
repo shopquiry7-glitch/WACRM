@@ -213,9 +213,11 @@ export function MessageThread({
   const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
   const [multiDeleteDialogOpen, setMultiDeleteDialogOpen] = useState(false);
   const [paymentLinkOpen, setPaymentLinkOpen] = useState(false);
+  const [isBillingBannerDismissed, setIsBillingBannerDismissed] = useState(false);
 
   useEffect(() => {
     setSelectedMessageIds(new Set());
+    setIsBillingBannerDismissed(false);
   }, [conversation?.id]);
   // Which attachment the media viewer is showing. Lives here rather than in
   // the bubble so the viewer can page through every image/video in the
@@ -340,28 +342,26 @@ export function MessageThread({
     // was disconnected or throttled are otherwise lost.
   }, [conversationId, resyncToken]);
 
-  const latestFailedMessage = useMemo(() => {
+  const isLatestOutboundBillingError = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].status === "failed") {
-        return messages[i];
+      const m = messages[i];
+      if (m.sender_type === "agent" || m.sender_type === "bot") {
+        if (m.status !== "failed") return false;
+        const isBilling =
+          m.error_code === 131042 ||
+          m.error_title?.toLowerCase().includes("payment issue") ||
+          m.error_details?.toLowerCase().includes("billing_hub") ||
+          m.error_details?.toLowerCase().includes("payment method");
+        return isBilling;
       }
     }
-    return null;
+    return false;
   }, [messages]);
 
   const metaBillingUrl = useMemo(() => {
-    if (!latestFailedMessage) return null;
-    const isBilling =
-      latestFailedMessage.error_code === 131042 ||
-      latestFailedMessage.error_title?.toLowerCase().includes("payment issue") ||
-      latestFailedMessage.error_details?.toLowerCase().includes("billing_hub");
-    if (!isBilling) return null;
-
-    const urlMatch = latestFailedMessage.error_details?.match(/(https?:\/\/[^\s]+)/);
-    return urlMatch
-      ? urlMatch[0]
-      : "https://business.facebook.com/billing_hub/accounts/details/?business_id=174853050517617&asset_id=1618556389982785&wizard_name=PAY_NOW&account_type=whatsapp-business-account";
-  }, [latestFailedMessage]);
+    if (!isLatestOutboundBillingError) return null;
+    return "https://business.facebook.com/billing_hub/accounts/details/?business_id=174853050517617&asset_id=1618556389982785&wizard_name=PAY_NOW&account_type=whatsapp-business-account";
+  }, [isLatestOutboundBillingError]);
 
   // Reactions fetch — pulls the current state from the DB. Kept separate
   // from the channel subscription below so a `resyncToken` bump just
@@ -1494,28 +1494,39 @@ export function MessageThread({
       />
 
       {/* Meta Billing Error Banner (Code 131042) */}
-      {metaBillingUrl && (
+      {metaBillingUrl && !isBillingBannerDismissed && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-red-500/30 bg-red-950/60 px-4 py-2.5 text-xs text-red-200 animate-in fade-in duration-200">
           <div className="flex items-start gap-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
             <div>
               <p className="font-semibold text-red-100">
-                Meta WhatsApp Outbound Blocked (Error 131042: Business eligibility payment issue)
+                Meta WhatsApp Outbound Blocked (Error 131042: Payment Method Issue)
               </p>
               <p className="text-[11px] text-red-300 mt-0.5">
-                Meta Business Manager par unsettled payment ya card update required hai. Bill clear karte hi messages foran send hona shuru ho jayenge.
+                Meta Business Manager par payment method error hai. Card ko WhatsApp account se link karein ya bank verification approve karein.
               </p>
             </div>
           </div>
-          <a
-            href={metaBillingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold px-3 py-1.5 text-xs transition-colors shrink-0 shadow-xs"
-          >
-            <span>Pay on Meta Hub</span>
-            <ExternalLink className="h-3 w-3" />
-          </a>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={metaBillingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold px-3 py-1.5 text-xs transition-colors shrink-0 shadow-xs"
+            >
+              <span>Fix on Meta Hub</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+            <button
+              type="button"
+              onClick={() => setIsBillingBannerDismissed(true)}
+              className="p-1 rounded-md text-red-400 hover:text-white hover:bg-red-900/50 transition-colors"
+              title="Dismiss alert"
+              aria-label="Dismiss alert"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
 
