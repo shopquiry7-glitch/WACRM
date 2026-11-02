@@ -214,11 +214,10 @@ export function MessageThread({
   const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
   const [multiDeleteDialogOpen, setMultiDeleteDialogOpen] = useState(false);
   const [paymentLinkOpen, setPaymentLinkOpen] = useState(false);
-  const [isBillingBannerDismissed, setIsBillingBannerDismissed] = useState(false);
+  const [dismissedBillingMsgId, setDismissedBillingMsgId] = useState<string | null>(null);
 
   useEffect(() => {
     setSelectedMessageIds(new Set());
-    setIsBillingBannerDismissed(false);
   }, [conversation?.id]);
   // Which attachment the media viewer is showing. Lives here rather than in
   // the bubble so the viewer can page through every image/video in the
@@ -343,26 +342,25 @@ export function MessageThread({
     // was disconnected or throttled are otherwise lost.
   }, [conversationId, resyncToken]);
 
-  const isLatestOutboundBillingError = useMemo(() => {
+  const lastOutboundBillingMsg = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
       if (m.sender_type === "agent" || m.sender_type === "bot") {
-        if (m.status !== "failed") return false;
+        if (m.status !== "failed") return null;
         const isBilling =
           m.error_code === 131042 ||
           m.error_title?.toLowerCase().includes("payment issue") ||
           m.error_details?.toLowerCase().includes("billing_hub") ||
           m.error_details?.toLowerCase().includes("payment method");
-        return isBilling;
+        return isBilling ? m : null;
       }
     }
-    return false;
+    return null;
   }, [messages]);
 
-  const metaBillingUrl = useMemo(() => {
-    if (!isLatestOutboundBillingError) return null;
-    return "https://business.facebook.com/billing_hub/accounts/details/?business_id=174853050517617&asset_id=1618556389982785&wizard_name=PAY_NOW&account_type=whatsapp-business-account";
-  }, [isLatestOutboundBillingError]);
+  const showBillingBanner =
+    Boolean(lastOutboundBillingMsg) &&
+    lastOutboundBillingMsg?.id !== dismissedBillingMsgId;
 
   // Map of messageId -> latest previous customer message timestamp for per-message 24h cost
   const prevCustomerMap = useMemo(() => {
@@ -1124,8 +1122,8 @@ export function MessageThread({
     <div className={cn("flex min-w-0 flex-1 flex-col", DOODLE_BG_CLASSES)}>
       {/* Header — solid card surface sits on top of the doodle so the
           name/avatar/dropdowns stay legible. */}
-      <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2 sm:px-4">
+        <div className="flex min-w-[130px] max-w-[200px] sm:max-w-none items-center gap-2 sm:gap-3 shrink-0">
           {/* Back-to-list button — mobile only. Hidden on lg+ where the
               conversation list is always visible next to the thread. */}
           {onBack && (
@@ -1156,7 +1154,7 @@ export function MessageThread({
                 <>
                   {country && <span className="text-[11px]">{country.flag}</span>}
                   <span className="font-mono">{formattedPhone}</span>
-                  {country && <span className="text-[11px] text-muted-foreground/80">• {country.name}</span>}
+                  {country && <span className="text-[11px] text-muted-foreground/80 hidden sm:inline">• {country.name}</span>}
                 </>
               ) : (
                 <span className="truncate">{contactHandle(contact)}</span>
@@ -1165,7 +1163,7 @@ export function MessageThread({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink min-w-0 overflow-x-auto no-scrollbar py-0.5">
           {/* Contact-panel toggle — desktop only. The contact sidebar
               eats a chunk of horizontal width that crowds the thread on
               smaller laptops; this lets agents reclaim it when they just
@@ -1598,7 +1596,7 @@ export function MessageThread({
       />
 
       {/* Meta Billing Error Banner (Code 131042) */}
-      {metaBillingUrl && !isBillingBannerDismissed && (
+      {showBillingBanner && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-red-500/30 bg-red-950/60 px-4 py-2.5 text-xs text-red-200 animate-in fade-in duration-200">
           <div className="flex items-start gap-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
@@ -1613,7 +1611,7 @@ export function MessageThread({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <a
-              href={metaBillingUrl}
+              href="https://business.facebook.com/billing_hub/accounts/details/?business_id=174853050517617&asset_id=1618556389982785&wizard_name=PAY_NOW&account_type=whatsapp-business-account"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold px-3 py-1.5 text-xs transition-colors shrink-0 shadow-xs"
@@ -1623,8 +1621,12 @@ export function MessageThread({
             </a>
             <button
               type="button"
-              onClick={() => setIsBillingBannerDismissed(true)}
-              className="p-1 rounded-md text-red-400 hover:text-white hover:bg-red-900/50 transition-colors"
+              onClick={() => {
+                if (lastOutboundBillingMsg) {
+                  setDismissedBillingMsgId(lastOutboundBillingMsg.id);
+                }
+              }}
+              className="p-1 rounded-md text-red-400 hover:text-white hover:bg-red-900/50 transition-colors cursor-pointer"
               title="Dismiss alert"
               aria-label="Dismiss alert"
             >
