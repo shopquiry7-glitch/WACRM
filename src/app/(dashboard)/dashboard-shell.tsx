@@ -19,10 +19,38 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const t = useTranslations("DashboardShell");
 
-  // Sidebar drawer state — only used on mobile. On lg+ the sidebar is
-  // always visible and this stays at `false` (ignored by the component).
+  // Sidebar drawer state — mobile
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+  // Desktop sidebar collapsed state — saved in localStorage
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const stored = localStorage.getItem("wacrm_sidebar_open");
+    return stored === null ? true : stored === "true";
+  });
+
+  const toggleDesktopSidebar = useCallback(() => {
+    setDesktopSidebarOpen((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("wacrm_sidebar_open", String(next));
+      }
+      return next;
+    });
+  }, []);
+
+  // Keyboard shortcut: Ctrl+B or Cmd+B toggles desktop sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        toggleDesktopSidebar();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleDesktopSidebar]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -51,9 +79,18 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       {/* Desktop alerts for new customer messages (opt-in via Settings →
           Your profile). Headless — renders nothing. */}
       <BrowserNotificationsListener />
-      <Sidebar open={sidebarOpen} onClose={closeSidebar} />
+      <Sidebar
+        open={sidebarOpen}
+        onClose={closeSidebar}
+        desktopOpen={desktopSidebarOpen}
+        onToggleDesktop={toggleDesktopSidebar}
+      />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header onOpenSidebar={() => setSidebarOpen(true)} />
+        <Header
+          onOpenSidebar={() => setSidebarOpen(true)}
+          desktopSidebarOpen={desktopSidebarOpen}
+          onToggleDesktopSidebar={toggleDesktopSidebar}
+        />
         {/* Thinner horizontal padding on mobile so cards have room to breathe. */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Above every page: writes are being rejected and here's why.

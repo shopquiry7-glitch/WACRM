@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Fragment, useEffect } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useTotalUnread } from "@/hooks/use-total-unread";
@@ -11,6 +11,8 @@ import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
   Bell,
   Bot,
+  ChevronDown,
+  ChevronRight,
   ClipboardList,
   Crown,
   GitBranch,
@@ -19,6 +21,8 @@ import {
   LogOut,
   MapPin,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   PhoneCall,
   Radio,
   ReceiptText,
@@ -143,19 +147,54 @@ const bottomNavItems = [
 ];
 
 interface SidebarProps {
-  /** Controlled on mobile by the Header's hamburger button. Ignored on lg+. */
+  /** Controlled on mobile by the Header's hamburger button. */
   open?: boolean;
   onClose?: () => void;
+  /** Whether the desktop sidebar is open. Defaults to true. */
+  desktopOpen?: boolean;
+  /** Toggles the desktop sidebar open/closed. */
+  onToggleDesktop?: () => void;
 }
 
 import { useTranslations } from "next-intl";
 
-export function Sidebar({ open = false, onClose }: SidebarProps) {
+export function Sidebar({
+  open = false,
+  onClose,
+  desktopOpen = true,
+  onToggleDesktop,
+}: SidebarProps) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const { profile, profileLoading, account, accountRole, signOut } = useAuth();
   const totalUnread = useTotalUnread();
   const unreadNotifications = useUnreadNotifications();
+
+  // Collapsible section state for extra tools (Client Onboarding, Invoices, Domain)
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(localStorage.getItem("wacrm_collapsed_nav_sections") || "{}");
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleSection = (title: string) => {
+    setCollapsedSections((prev: Record<string, boolean>) => {
+      const next = { ...prev, [title]: !prev[title] };
+      if (typeof window !== "undefined") {
+        localStorage.setItem("wacrm_collapsed_nav_sections", JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
+  // Sales Agent Portal card dismissal state
+  const [hideSalesBanner, setHideSalesBanner] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("wacrm_hide_sales_banner") === "true";
+  });
   // Only surface the account-name strip when it actually carries
   // information. A solo user's personal account is named after them
   // (the 017 signup trigger seeds it from `full_name`), so showing it
@@ -214,15 +253,17 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         className={cn(
           // Mobile: fixed drawer that slides in from the left.
           "fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-border bg-card",
-          "transition-transform duration-200 ease-out will-change-transform",
+          "transition-all duration-300 ease-in-out will-change-transform",
           open ? "translate-x-0" : "-translate-x-full",
-          // Desktop: static, always visible — reset all the mobile framing.
-          "lg:static lg:z-0 lg:w-60 lg:translate-x-0 lg:transition-none",
+          // Desktop: static, collapsible smoothly
+          "lg:static lg:z-0 lg:translate-x-0",
+          desktopOpen
+            ? "lg:w-60 lg:opacity-100"
+            : "lg:w-0 lg:overflow-hidden lg:opacity-0 lg:border-r-0 lg:pointer-events-none"
         )}
         aria-label={t("primaryNav")}
       >
-        {/* Logo row. On mobile we put a close button here; on desktop the
-            close button is hidden since the sidebar is always-visible. */}
+        {/* Logo row. On mobile we put a close button here; on desktop a collapse button. */}
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
           <Link href="/dashboard" className="flex items-center gap-2.5 group">
             <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white border border-border shadow-xs transition-transform group-hover:scale-105">
@@ -244,14 +285,27 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               </span>
             </div>
           </Link>
+          {/* Mobile close button */}
           <button
             type="button"
             onClick={onClose}
             aria-label={t("closeMenu")}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
+          {/* Desktop collapse button */}
+          {onToggleDesktop && (
+            <button
+              type="button"
+              onClick={onToggleDesktop}
+              aria-label="Hide sidebar (Ctrl+B)"
+              title="Hide sidebar (Ctrl+B)"
+              className="hidden lg:flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Main navigation */}
@@ -281,54 +335,66 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 <Fragment key={item.href}>
                   {item.sectionTitle && (
                     <li className="mt-2.5 mb-0.5 px-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/75">
-                          {item.sectionTitle}
-                        </span>
-                        <div className="flex-1 border-t border-border/60" />
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleSection(item.sectionTitle!)}
+                        className="flex w-full items-center justify-between gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/75 hover:text-foreground transition-colors cursor-pointer py-1"
+                        title={collapsedSections[item.sectionTitle] ? "Click to expand" : "Click to collapse"}
+                      >
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                          <span className="truncate">{item.sectionTitle}</span>
+                          <div className="flex-1 border-t border-border/60" />
+                        </div>
+                        {collapsedSections[item.sectionTitle] ? (
+                          <ChevronRight className="size-3 shrink-0 ml-1 text-muted-foreground/60" />
+                        ) : (
+                          <ChevronDown className="size-3 shrink-0 ml-1 text-muted-foreground/60" />
+                        )}
+                      </button>
                     </li>
                   )}
-                  <li>
-                    <Link
-                      href={item.href}
-                      className={cn(
-                        // Comfortable hit target on mobile, compact on desktop (32px row)
-                        "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors lg:py-1.5",
-                        isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                      )}
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="flex-1">{t(item.labelKey as string)}</span>
-                      {item.beta && (
-                        <span
-                          aria-label={t("beta")}
-                          className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300"
-                        >
-                          {t("beta")}
-                        </span>
-                      )}
-                      {showUnreadDot && (
-                        <span
-                          aria-label={t("unreadConversations", { count: totalUnread })}
-                          className="relative flex h-2 w-2 shrink-0"
-                        >
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                        </span>
-                      )}
-                      {showNotificationBadge && (
-                        <span
-                          aria-label={t("unreadNotifications", { count: unreadNotifications })}
-                          className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
-                        >
-                          {unreadNotifications > 9 ? "9+" : unreadNotifications}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
+                  {(!item.sectionTitle || !collapsedSections[item.sectionTitle]) && (
+                    <li>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          // Comfortable hit target on mobile, compact on desktop (32px row)
+                          "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors lg:py-1.5",
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="flex-1">{t(item.labelKey as string)}</span>
+                        {item.beta && (
+                          <span
+                            aria-label={t("beta")}
+                            className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300"
+                          >
+                            {t("beta")}
+                          </span>
+                        )}
+                        {showUnreadDot && (
+                          <span
+                            aria-label={t("unreadConversations", { count: totalUnread })}
+                            className="relative flex h-2 w-2 shrink-0"
+                          >
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                          </span>
+                        )}
+                        {showNotificationBadge && (
+                          <span
+                            aria-label={t("unreadNotifications", { count: unreadNotifications })}
+                            className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
+                          >
+                            {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  )}
                 </Fragment>
               );
             })}
@@ -360,20 +426,36 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </nav>
 
         {/* Sales Agent Portal Banner */}
-        <div className="px-3 pb-2">
-          <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-2.5 text-xs transition-all hover:border-purple-500/40">
-            <div className="flex items-center gap-2 font-medium text-foreground">
-              <span className="flex size-5 items-center justify-center rounded-full bg-purple-500/20 text-purple-500">
-                <Sparkles className="size-3" />
-              </span>
-              Sales Agent Portal
-            </div>
-            <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>Earn 50% commission</span>
-              <span className="font-semibold text-purple-500">→</span>
+        {!hideSalesBanner && (
+          <div className="px-3 pb-2">
+            <div className="group relative rounded-xl border border-purple-500/20 bg-purple-500/5 p-2.5 text-xs transition-all hover:border-purple-500/40">
+              <button
+                type="button"
+                onClick={() => {
+                  setHideSalesBanner(true);
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem("wacrm_hide_sales_banner", "true");
+                  }
+                }}
+                className="absolute top-2 right-2 rounded p-0.5 text-muted-foreground/60 transition-colors hover:bg-purple-500/10 hover:text-foreground cursor-pointer"
+                title="Hide this card"
+                aria-label="Hide Sales Agent Portal"
+              >
+                <X className="size-3" />
+              </button>
+              <div className="flex items-center gap-2 font-medium text-foreground pr-5">
+                <span className="flex size-5 items-center justify-center rounded-full bg-purple-500/20 text-purple-500">
+                  <Sparkles className="size-3" />
+                </span>
+                Sales Agent Portal
+              </div>
+              <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>Earn 50% commission</span>
+                <span className="font-semibold text-purple-500">→</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* User section */}
         <div className="shrink-0 border-t border-border p-3">
