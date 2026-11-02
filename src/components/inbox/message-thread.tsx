@@ -34,6 +34,7 @@ import {
   Send,
   ExternalLink,
   CreditCard,
+  AlertCircle,
 } from "lucide-react";
 import { format, isToday, isYesterday, differenceInHours } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -338,6 +339,29 @@ export function MessageThread({
     // realtime is best-effort and any message events sent while the WS
     // was disconnected or throttled are otherwise lost.
   }, [conversationId, resyncToken]);
+
+  const latestFailedMessage = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].status === "failed") {
+        return messages[i];
+      }
+    }
+    return null;
+  }, [messages]);
+
+  const metaBillingUrl = useMemo(() => {
+    if (!latestFailedMessage) return null;
+    const isBilling =
+      latestFailedMessage.error_code === 131042 ||
+      latestFailedMessage.error_title?.toLowerCase().includes("payment issue") ||
+      latestFailedMessage.error_details?.toLowerCase().includes("billing_hub");
+    if (!isBilling) return null;
+
+    const urlMatch = latestFailedMessage.error_details?.match(/(https?:\/\/[^\s]+)/);
+    return urlMatch
+      ? urlMatch[0]
+      : "https://business.facebook.com/billing_hub/accounts/details/?business_id=174853050517617&asset_id=1618556389982785&wizard_name=PAY_NOW&account_type=whatsapp-business-account";
+  }, [latestFailedMessage]);
 
   // Reactions fetch — pulls the current state from the DB. Kept separate
   // from the channel subscription below so a `resyncToken` bump just
@@ -1469,6 +1493,31 @@ export function MessageThread({
         }}
       />
 
+      {/* Meta Billing Error Banner (Code 131042) */}
+      {metaBillingUrl && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-red-500/30 bg-red-950/60 px-4 py-2.5 text-xs text-red-200 animate-in fade-in duration-200">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-100">
+                Meta WhatsApp Outbound Blocked (Error 131042: Business eligibility payment issue)
+              </p>
+              <p className="text-[11px] text-red-300 mt-0.5">
+                Meta Business Manager par unsettled payment ya card update required hai. Bill clear karte hi messages foran send hona shuru ho jayenge.
+              </p>
+            </div>
+          </div>
+          <a
+            href={metaBillingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold px-3 py-1.5 text-xs transition-colors shrink-0 shadow-xs"
+          >
+            <span>Pay on Meta Hub</span>
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      )}
 
       {/* Composer or WhatsApp-style selection bar */}
       {selectedMessageIds.size > 0 ? (
