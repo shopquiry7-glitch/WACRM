@@ -31,6 +31,7 @@ import { InteractivePreview } from "@/components/interactive/interactive-preview
 import { useTranslations } from "next-intl";
 import { formatMessageFailureReason } from "@/lib/whatsapp/failure-reason";
 import { formatRoleLabel, parseSenderSignature } from "@/lib/auth/roles";
+import { calculateMessageCost } from "@/lib/whatsapp/message-cost";
 
 interface MessageBubbleProps {
   message: Message;
@@ -49,6 +50,8 @@ interface MessageBubbleProps {
   onOpenTemplates?: () => void;
   /** Profile info of the agent who sent this message (if known). */
   senderProfile?: { full_name?: string | null; account_role?: string | null } | null;
+  /** Timestamp of the most recent prior customer message, for 24h cost calculation. */
+  prevCustomerMsgDate?: string | null;
 }
 
 /**
@@ -254,8 +257,14 @@ export function MessageBubble({
   onOpenMedia,
   onOpenTemplates,
   senderProfile,
+  prevCustomerMsgDate,
 }: MessageBubbleProps) {
   const t = useTranslations("Inbox.bubble");
+
+  const cost = useMemo(
+    () => calculateMessageCost(message, prevCustomerMsgDate),
+    [message, prevCustomerMsgDate]
+  );
 
   const parsed = useMemo(
     () => parseSenderSignature(message.content_text),
@@ -368,6 +377,21 @@ export function MessageBubble({
               >
                 <Sparkles className="h-2.5 w-2.5" />
                 {t("aiBadge")}
+              </span>
+            )}
+            {isAgent && (
+              <span
+                className={cn(
+                  "inline-flex items-center text-[9px] font-mono px-1 py-0.5 rounded leading-none select-none transition-colors cursor-help",
+                  cost.category === "free"
+                    ? "bg-emerald-500/25 text-emerald-300 font-semibold"
+                    : cost.category === "failed"
+                      ? "bg-red-500/20 text-red-200 line-through opacity-80"
+                      : "bg-amber-500/25 text-amber-200 font-semibold"
+                )}
+                title={cost.description}
+              >
+                {cost.shortLabel}
               </span>
             )}
             <span

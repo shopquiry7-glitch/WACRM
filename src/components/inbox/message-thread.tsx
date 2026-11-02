@@ -51,6 +51,7 @@ import { MessageBubble } from "./message-bubble";
 import { MessageActions } from "./message-actions";
 import { MediaLightbox } from "./media-lightbox";
 import { collectMediaGallery } from "@/lib/media/gallery";
+import { calculateConversationCostSummary } from "@/lib/whatsapp/message-cost";
 import {
   MessageComposer,
   CHAT_MEDIA_BUCKET,
@@ -362,6 +363,27 @@ export function MessageThread({
     if (!isLatestOutboundBillingError) return null;
     return "https://business.facebook.com/billing_hub/accounts/details/?business_id=174853050517617&asset_id=1618556389982785&wizard_name=PAY_NOW&account_type=whatsapp-business-account";
   }, [isLatestOutboundBillingError]);
+
+  // Map of messageId -> latest previous customer message timestamp for per-message 24h cost
+  const prevCustomerMap = useMemo(() => {
+    const map = new Map<string, string | null>();
+    let lastCustTs: string | null = null;
+    const sorted = [...messages].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    for (const m of sorted) {
+      if (m.sender_type === "customer") {
+        lastCustTs = m.created_at;
+      }
+      map.set(m.id, lastCustTs);
+    }
+    return map;
+  }, [messages]);
+
+  const costSummary = useMemo(
+    () => calculateConversationCostSummary(messages),
+    [messages]
+  );
 
   // Reactions fetch — pulls the current state from the DB. Kept separate
   // from the channel subscription below so a `resyncToken` bump just
@@ -1385,6 +1407,87 @@ export function MessageThread({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* ⚡ Meta WhatsApp Cost & 24h Window Tracker Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={cn(
+                "inline-flex items-center gap-1.5 sm:gap-2 rounded-full border bg-card hover:bg-muted/70 px-2.5 sm:px-3 py-1 text-xs shadow-2xs select-none transition-all cursor-pointer shrink-0",
+                costSummary.isWindowActive
+                  ? "border-emerald-500/40 text-emerald-400"
+                  : "border-amber-500/40 text-amber-400"
+              )}
+              title="Click to view real-time Meta WhatsApp charges breakdown"
+            >
+              <span
+                className={cn(
+                  "h-2 w-2 rounded-full shrink-0",
+                  costSummary.isWindowActive
+                    ? "bg-emerald-500 animate-pulse"
+                    : "bg-amber-500"
+                )}
+              />
+              <span className="text-[11px] font-medium text-foreground">
+                {costSummary.isWindowActive
+                  ? `24h Free (${costSummary.windowHoursRemaining}h left)`
+                  : "24h Closed"}
+              </span>
+              <span className="text-muted-foreground/60 hidden sm:inline">|</span>
+              <span className="text-[11px] font-mono text-muted-foreground hidden sm:inline">
+                Meta: <strong className="text-foreground font-semibold">{costSummary.totalCostFormatted}</strong>
+              </span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72 p-3 border-border bg-popover text-xs space-y-2.5">
+              <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                <span className="font-semibold text-foreground flex items-center gap-1.5">
+                  <span className="text-emerald-500">⚡</span> Meta WhatsApp Charges
+                </span>
+                <span className={cn(
+                  "text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider",
+                  costSummary.isWindowActive ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
+                )}>
+                  {costSummary.isWindowActive ? "Free Window" : "Window Expired"}
+                </span>
+              </div>
+
+              <div className="space-y-1.5 text-[11px]">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Total Meta Cost (This Chat):</span>
+                  <span className="font-mono font-bold text-foreground text-xs">{costSummary.totalCostFormatted}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Next Outbound Cost:</span>
+                  <span className={cn("font-medium", costSummary.isWindowActive ? "text-emerald-400" : "text-amber-400")}>
+                    {costSummary.nextMessageCostEstimate}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Free Service Messages:</span>
+                  <span className="text-foreground">{costSummary.freeMessagesCount} msgs (0 AED)</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Paid Messages:</span>
+                  <span className="text-foreground">{costSummary.billableMessagesCount} msgs</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-border/60 text-[10px] text-muted-foreground space-y-1">
+                <p className="font-semibold text-foreground/90">Official Meta Rates (UAE +971):</p>
+                <div className="flex justify-between">
+                  <span>• Customer Reply (24h):</span>
+                  <span className="font-semibold text-emerald-400">0.00 AED (Free)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>• Reopening / Utility:</span>
+                  <span className="font-semibold text-foreground">~0.057 AED (~6 fils)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>• Marketing Deal/Offer:</span>
+                  <span className="font-semibold text-foreground">~0.21 AED (~21 fils)</span>
+                </div>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -1466,6 +1569,7 @@ export function MessageThread({
                           onOpenMedia={handleMediaChange}
                           onOpenTemplates={handleOpenTemplates}
                           senderProfile={senderProf}
+                          prevCustomerMsgDate={prevCustomerMap.get(msg.id)}
                         />
                       </MessageActions>
                     );
