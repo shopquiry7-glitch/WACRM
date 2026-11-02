@@ -14,7 +14,7 @@ import { ConversationList } from "@/components/inbox/conversation-list";
 import { MessageThread } from "@/components/inbox/message-thread";
 import { ContactSidebar } from "@/components/inbox/contact-sidebar";
 import { toast } from "sonner";
-import { WifiOff } from "lucide-react";
+import { PanelRightOpen, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Remembers the agent's show/hide choice for the desktop contact panel
@@ -638,12 +638,25 @@ function InboxPageInner() {
             agent hasn't collapsed it via the thread-header toggle (#258).
             On mobile it's always hidden (the `lg:block` below), so the
             toggle — which is itself desktop-only — never affects it. */}
-        {contactPanelOpen && (
-          <div className="hidden lg:block">
+        {contactPanelOpen ? (
+          <div className="hidden lg:block shrink-0">
             <ContactSidebar
               contact={activeContact}
               conversation={activeConversation}
+              onClose={handleToggleContactPanel}
             />
+          </div>
+        ) : (
+          <div className="hidden lg:flex flex-col items-center justify-start border-l border-border bg-card/50 py-3 px-1">
+            <button
+              type="button"
+              onClick={handleToggleContactPanel}
+              title="Show Contact Details"
+              aria-label="Show Contact Details"
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+            >
+              <PanelRightOpen className="h-4 w-4" />
+            </button>
           </div>
         )}
       </div>

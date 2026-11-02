@@ -1164,33 +1164,6 @@ export function MessageThread({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink min-w-0 overflow-x-auto no-scrollbar py-0.5">
-          {/* Contact-panel toggle — desktop only. The contact sidebar
-              eats a chunk of horizontal width that crowds the thread on
-              smaller laptops; this lets agents reclaim it when they just
-              want to read and reply. Hidden on mobile, where the sidebar
-              never renders as a permanent panel anyway. Issue #258. */}
-          {onToggleContactPanel && (
-            <button
-              type="button"
-              onClick={onToggleContactPanel}
-              aria-label={
-                contactPanelOpen ? t("hideContactPanel") : t("showContactPanel")
-              }
-              title={contactPanelOpen ? t("hideContact") : t("showContact")}
-              aria-pressed={contactPanelOpen}
-              className={cn(
-                "hidden h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-muted hover:text-foreground lg:inline-flex",
-                contactPanelOpen ? "text-primary" : "text-muted-foreground",
-              )}
-            >
-              {contactPanelOpen ? (
-                <PanelRightClose className="h-4 w-4" />
-              ) : (
-                <PanelRightOpen className="h-4 w-4" />
-              )}
-            </button>
-          )}
-
           {/* Manual refresh — forces a refetch of the messages + the
               conversation list (the parent bumps its resyncToken). Useful
               when realtime missed an event or the agent just wants to be
@@ -1487,6 +1460,33 @@ export function MessageThread({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {/* Pinned Contact Details Sidebar Toggle Button — Desktop only */}
+        {onToggleContactPanel && (
+          <div className="hidden lg:flex items-center pl-1.5 sm:pl-2 border-l border-border shrink-0">
+            <button
+              type="button"
+              onClick={onToggleContactPanel}
+              aria-label={
+                contactPanelOpen ? t("hideContactPanel") : t("showContactPanel")
+              }
+              title={contactPanelOpen ? "Hide Contact Details" : "Show Contact Details"}
+              aria-pressed={contactPanelOpen}
+              className={cn(
+                "h-8 w-8 inline-flex items-center justify-center rounded-lg border transition-all cursor-pointer shadow-xs",
+                contactPanelOpen
+                  ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+                  : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              {contactPanelOpen ? (
+                <PanelRightClose className="h-4 w-4" />
+              ) : (
+                <PanelRightOpen className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Messages Area */}

@@ -31,6 +31,7 @@ import {
   Sparkles,
   Search,
   MessageSquare,
+  PanelRightClose,
   CheckCircle2,
   Calendar,
   DollarSign,
@@ -58,6 +59,7 @@ import { getCountryFromPhone, formatPhoneDisplay } from "@/lib/whatsapp/phone-co
 interface ContactSidebarProps {
   contact: Contact | null;
   conversation?: Conversation | null;
+  onClose?: () => void;
 }
 
 const PRESET_TAG_COLORS = [
@@ -84,7 +86,7 @@ interface AutomationItem {
   is_active: boolean;
 }
 
-export function ContactSidebar({ contact, conversation }: ContactSidebarProps) {
+export function ContactSidebar({ contact, conversation, onClose }: ContactSidebarProps) {
   const { accountId, defaultCurrency } = useAuth();
   const supabase = createClient();
 
@@ -553,7 +555,17 @@ export function ContactSidebar({ contact, conversation }: ContactSidebarProps) {
 
   if (!contact) {
     return (
-      <div className="flex h-full w-[330px] items-center justify-center border-l border-border bg-card p-6 text-center">
+      <div className="relative flex h-full w-[330px] items-center justify-center border-l border-border bg-card p-6 text-center">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            title="Hide details"
+            className="absolute top-4 right-4 rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+          >
+            <PanelRightClose className="h-4 w-4" />
+          </button>
+        )}
         <p className="text-xs text-muted-foreground">Select a conversation to view details</p>
       </div>
     );
@@ -576,14 +588,14 @@ export function ContactSidebar({ contact, conversation }: ContactSidebarProps) {
     <div className="flex h-full w-[330px] flex-col border-l border-slate-200/80 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950">
       {/* Top Header: Phone Number (Matching Screenshot) */}
       <div className="flex items-center justify-between border-b border-slate-200/80 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
-        <div>
+        <div className="min-w-0 pr-2">
           <div className="flex items-center gap-1.5">
             {country && <span className="text-base select-none">{country.flag}</span>}
-            <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-slate-100 font-mono">
+            <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-slate-100 font-mono truncate">
               {formattedPhone || primaryPhone || "Contact Details"}
             </h2>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
             {contact.name ? (
               <>
                 <span>{contact.name}</span>
@@ -594,13 +606,27 @@ export function ContactSidebar({ contact, conversation }: ContactSidebarProps) {
             )}
           </p>
         </div>
-        <button
-          onClick={handleCopyPhone}
-          title="Copy phone"
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
-        >
-          {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={handleCopyPhone}
+            title="Copy phone"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+          >
+            {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+          </button>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              title="Hide sidebar"
+              aria-label="Hide sidebar"
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              <PanelRightClose className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <ScrollArea className="flex-1">
