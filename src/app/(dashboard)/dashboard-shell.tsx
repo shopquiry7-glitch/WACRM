@@ -95,7 +95,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
           onToggleDesktopSidebar={toggleDesktopSidebar}
         />
         {/* Thinner horizontal padding on mobile so cards have room to breathe. */}
-        <main className={cn("flex-1", isInbox ? "overflow-hidden p-0" : "overflow-y-auto p-4 sm:p-6")}>
+        <main className={cn("flex-1 min-h-0", isInbox ? "overflow-hidden p-0" : "overflow-y-auto p-4 sm:p-6")}>
           {/* Above every page: writes are being rejected and here's why.
               Renders nothing unless the account/role failed to resolve. */}
           <AccountAccessAlert />

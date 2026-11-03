@@ -97,6 +97,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setModeState(next);
     if (typeof document !== "undefined") {
       document.documentElement.dataset.mode = next;
+      document.documentElement.classList.toggle("dark", next === "dark");
+      document.documentElement.classList.toggle("light", next === "light");
     }
     try {
       localStorage.setItem(MODE_STORAGE_KEY, next);
@@ -104,6 +106,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       // Same private-browsing edge case as above.
     }
   }, []);
+
+  // Sync .dark class with mode on mount and state changes
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.toggle("dark", mode === "dark");
+      document.documentElement.classList.toggle("light", mode === "light");
+    }
+  }, [mode]);
 
   const toggleMode = useCallback(() => {
     setMode(mode === "dark" ? "light" : "dark");
