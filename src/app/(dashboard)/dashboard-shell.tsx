@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
@@ -17,6 +18,8 @@ import { BrowserNotificationsListener } from "@/components/notifications/browser
 function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const isInbox = pathname?.startsWith("/inbox");
   const t = useTranslations("DashboardShell");
 
   // Sidebar drawer state — mobile
@@ -92,7 +95,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
           onToggleDesktopSidebar={toggleDesktopSidebar}
         />
         {/* Thinner horizontal padding on mobile so cards have room to breathe. */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className={cn("flex-1", isInbox ? "overflow-hidden p-0" : "overflow-y-auto p-4 sm:p-6")}>
           {/* Above every page: writes are being rejected and here's why.
               Renders nothing unless the account/role failed to resolve. */}
           <AccountAccessAlert />

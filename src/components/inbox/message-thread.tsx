@@ -35,6 +35,7 @@ import {
   ExternalLink,
   CreditCard,
   AlertCircle,
+  MoreVertical,
 } from "lucide-react";
 import { format, isToday, isYesterday, differenceInHours } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -160,7 +161,7 @@ const STATUS_OPTIONS: { label: string; value: ConversationStatus; color: string 
  * if we ever switch the asset, both spots update together.
  */
 const DOODLE_BG_CLASSES =
-  "bg-background bg-[url('/inbox-doodle.svg')] bg-repeat";
+  "bg-[#efeae2] dark:bg-[#0b141a] bg-[url('/inbox-doodle.svg')] bg-repeat";
 
 export function MessageThread({
   conversation,
@@ -1163,7 +1164,7 @@ export function MessageThread({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink min-w-0 overflow-x-auto no-scrollbar py-0.5">
+        <div className="hidden lg:flex items-center gap-1.5 sm:gap-2 shrink min-w-0 overflow-x-auto no-scrollbar py-0.5">
           {/* Manual refresh — forces a refetch of the messages + the
               conversation list (the parent bumps its resyncToken). Useful
               when realtime missed an event or the agent just wants to be
@@ -1457,6 +1458,88 @@ export function MessageThread({
                   <span className="font-semibold text-foreground">~0.21 AED (~21 fils)</span>
                 </div>
               </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Mobile Action Buttons (< lg): WhatsApp-style compact 3-dots menu & Quick Payment */}
+        <div className="flex lg:hidden items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setPaymentLinkOpen(true)}
+            className="h-8 px-2.5 rounded-full bg-[#059669] hover:bg-[#047857] text-white text-xs font-medium gap-1 shadow-xs cursor-pointer inline-flex items-center"
+            title="Ziina Payment Link"
+          >
+            <CreditCard className="h-3.5 w-3.5" />
+            <span className="text-[11px]">Pay</span>
+          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="h-8 w-8 inline-flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+              aria-label="More options"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 border-border bg-popover">
+              <DropdownMenuItem
+                onClick={handleSendFormMessage}
+                className="text-xs cursor-pointer gap-2 py-2"
+              >
+                <ClipboardList className="h-4 w-4 text-[#00a884]" />
+                <span>Send Client Form</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setPaymentLinkOpen(true)}
+                className="text-xs cursor-pointer gap-2 py-2"
+              >
+                <CreditCard className="h-4 w-4 text-emerald-500" />
+                <span>Ziina Payment Links...</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Status: {currentStatus ? t(`status${currentStatus.label}`) : t("status")}
+              </div>
+              {STATUS_OPTIONS.map((opt) => (
+                <DropdownMenuItem
+                  key={opt.value}
+                  onClick={() => onStatusChange?.(conversation.id, opt.value)}
+                  className={cn(
+                    "text-xs cursor-pointer gap-2",
+                    opt.value === conversation.status && "font-bold text-primary"
+                  )}
+                >
+                  <span className={cn("h-2 w-2 rounded-full", opt.color)} />
+                  <span>{t(`status${opt.label}`)}</span>
+                  {opt.value === conversation.status && <Check className="ml-auto h-3 w-3" />}
+                </DropdownMenuItem>
+              ))}
+
+              <DropdownMenuSeparator />
+
+              {onRefresh && (
+                <DropdownMenuItem
+                  onClick={handleRefreshClick}
+                  disabled={isRefreshing}
+                  className="text-xs cursor-pointer gap-2 py-2"
+                >
+                  <RefreshCw className={cn("h-4 w-4 text-muted-foreground", isRefreshing && "animate-spin")} />
+                  <span>Refresh Chat</span>
+                </DropdownMenuItem>
+              )}
+
+              {onToggleContactPanel && (
+                <DropdownMenuItem
+                  onClick={onToggleContactPanel}
+                  className="text-xs cursor-pointer gap-2 py-2"
+                >
+                  <PanelRightOpen className="h-4 w-4 text-primary" />
+                  <span>{contactPanelOpen ? "Hide Contact Details" : "View Contact Details"}</span>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

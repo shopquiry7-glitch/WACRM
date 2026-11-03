@@ -262,46 +262,37 @@ export function ConversationList({
           </Button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex items-center justify-center h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground rounded-md hover:bg-muted">
-                {activeFilter?.label ?? t("filterAll")}
-                <ChevronDown className="h-3 w-3" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="border-border bg-popover"
+        {/* WhatsApp-style Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {FILTER_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setFilter(opt.value)}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-medium transition-colors shrink-0 cursor-pointer",
+                filter === opt.value
+                  ? "bg-[#00a884] text-white"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+              )}
             >
-              {FILTER_OPTIONS.map((opt) => (
-                <DropdownMenuItem
-                  key={opt.value}
-                  onClick={() => setFilter(opt.value)}
-                  className={cn(
-                    "text-sm",
-                    filter === opt.value
-                      ? "text-primary"
-                      : "text-popover-foreground"
-                  )}
-                >
-                  {opt.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              {opt.label}
+            </button>
+          ))}
 
           {tags.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger
                 className={cn(
-                  "inline-flex items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
+                  "inline-flex items-center justify-center h-6 gap-1 rounded-full px-2.5 text-xs font-medium shrink-0 cursor-pointer",
                   selectedTagIds.length > 0
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-[#00a884] text-white"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                 )}
               >
                 {t("tags")}
                 {selectedTagIds.length > 0 && (
-                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  <span className="flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-white text-[#00a884] px-1 text-[9px] font-bold">
                     {selectedTagIds.length}
                   </span>
                 )}
@@ -316,7 +307,7 @@ export function ConversationList({
                     key={t.id}
                     checked={selectedTagIds.includes(t.id)}
                     onCheckedChange={() => toggleTag(t.id)}
-                    className="text-sm text-popover-foreground"
+                    className="text-sm text-popover-foreground cursor-pointer"
                   >
                     <span className="flex items-center gap-2">
                       <span
@@ -335,10 +326,10 @@ export function ConversationList({
             <DropdownMenu>
               <DropdownMenuTrigger
                 className={cn(
-                  "inline-flex max-w-40 items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
+                  "inline-flex max-w-36 items-center justify-center h-6 gap-1 rounded-full px-2.5 text-xs font-medium shrink-0 cursor-pointer",
                   selectedCompany
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-[#00a884] text-white"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                 )}
               >
                 <span className="truncate">{selectedCompany ?? t("company")}</span>
@@ -351,9 +342,9 @@ export function ConversationList({
                 <DropdownMenuItem
                   onClick={() => setSelectedCompany(null)}
                   className={cn(
-                    "text-sm",
+                    "text-sm cursor-pointer",
                     selectedCompany === null
-                      ? "text-primary"
+                      ? "text-[#00a884] font-medium"
                       : "text-popover-foreground"
                   )}
                 >
@@ -364,9 +355,9 @@ export function ConversationList({
                     key={co}
                     onClick={() => setSelectedCompany(co)}
                     className={cn(
-                      "text-sm",
+                      "text-sm cursor-pointer",
                       selectedCompany === co
-                        ? "text-primary"
+                        ? "text-[#00a884] font-medium"
                         : "text-popover-foreground"
                     )}
                   >
@@ -502,24 +493,24 @@ function ConversationItem({
     <button
       onClick={handleClick}
       className={cn(
-        "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/50",
-        isActive && "border-l-2 border-primary bg-muted/70"
+        "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/40 cursor-pointer border-b border-border/40",
+        isActive && "bg-[#f0f2f5] dark:bg-[#202c33]"
       )}
     >
       {/* Avatar with country flag badge */}
-      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
+      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
         {contact?.avatar_url ? (
           <img
             src={contact.avatar_url}
             alt={displayName}
-            className="h-10 w-10 rounded-full object-cover"
+            className="h-11 w-11 rounded-full object-cover"
           />
         ) : (
           initials
         )}
         {country && (
           <span
-            className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-card border border-border text-[10px] shadow-sm select-none"
+            className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-card border border-border text-[10px] shadow-sm select-none"
             title={`${country.name} (+${country.dialCode})`}
           >
             {country.flag}
@@ -531,7 +522,10 @@ function ConversationItem({
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-1.5">
           <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
-            <span className="truncate text-sm font-medium text-foreground">
+            <span className={cn(
+              "truncate text-sm text-foreground",
+              conversation.unread_count > 0 ? "font-bold" : "font-medium"
+            )}>
               {displayName}
             </span>
             {hasName && formattedPhone && (
@@ -544,15 +538,23 @@ function ConversationItem({
               </span>
             )}
           </div>
-          <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
+          <span className={cn(
+            "shrink-0 text-[11px]",
+            conversation.unread_count > 0 ? "text-[#00a884] font-semibold" : "text-muted-foreground"
+          )}>
+            {timeAgo}
+          </span>
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
-          <p className="truncate text-xs text-muted-foreground">
+          <p className={cn(
+            "truncate text-xs",
+            conversation.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"
+          )}>
             {conversation.last_message_text || t("noMessagesYet")}
           </p>
           <div className="flex shrink-0 items-center gap-1.5">
             {conversation.unread_count > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#25d366] px-1.5 text-[10px] font-bold text-white shadow-xs">
                 {conversation.unread_count}
               </span>
             )}

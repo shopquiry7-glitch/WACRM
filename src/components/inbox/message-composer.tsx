@@ -613,8 +613,8 @@ export function MessageComposer({
           </Button>
         </div>
       ) : (
-        <div className="flex items-end gap-2">
-          {/* Attach menu — photo / video / document / voice. */}
+        <div className="flex items-end gap-1.5 sm:gap-2">
+          {/* WhatsApp Attach Menu [📎] — houses all media, documents, templates, quick replies */}
           <DropdownMenu>
             <DropdownMenuTrigger
               disabled={inputsDisabled || busy}
@@ -625,89 +625,78 @@ export function MessageComposer({
                     ? undefined
                     : t("attachMedia")
               }
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 transition-colors cursor-pointer"
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Paperclip className="h-4 w-4" />
+                <Paperclip className="h-5 w-5" />
               )}
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="border-border bg-popover">
-              <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                <ImageIcon className="mr-2 h-4 w-4" />
-                {t("photo")}
+            <DropdownMenuContent align="start" className="w-56 border-border bg-popover p-1.5">
+              <DropdownMenuItem
+                onClick={() => imageInputRef.current?.click()}
+                className="cursor-pointer gap-2 py-2"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/10 text-blue-500">
+                  <ImageIcon className="h-4 w-4" />
+                </div>
+                <span>{t("photo")} / {t("video")}</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => videoInputRef.current?.click()}>
-                <Video className="mr-2 h-4 w-4" />
-                {t("video")}
+
+              <DropdownMenuItem
+                onClick={() => documentInputRef.current?.click()}
+                className="cursor-pointer gap-2 py-2"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-500/10 text-purple-500">
+                  <FileText className="h-4 w-4" />
+                </div>
+                <span>{t("document")}</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => documentInputRef.current?.click()}>
-                <FileText className="mr-2 h-4 w-4" />
-                {t("document")}
+
+              <DropdownMenuItem
+                onClick={onOpenTemplates}
+                className="cursor-pointer gap-2 py-2"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/10 text-amber-500">
+                  <LayoutTemplate className="h-4 w-4" />
+                </div>
+                <span>{t("sendTemplate")}</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => void startRecording()}>
-                <Mic className="mr-2 h-4 w-4" />
-                {t("voiceNote")}
+
+              <DropdownMenuItem
+                onClick={() => setQuickReplyOpen(true)}
+                className="cursor-pointer gap-2 py-2"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+                  <Zap className="h-4 w-4" />
+                </div>
+                <span>{t("quickReplies")}</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => openInteractiveBuilder()}
+                className="cursor-pointer gap-2 py-2"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500/10 text-indigo-500">
+                  <MessageSquareDashed className="h-4 w-4" />
+                </div>
+                <span>{t("interactiveMessage")}</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => void startRecording()}
+                className="cursor-pointer gap-2 py-2"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500/10 text-red-500">
+                  <Mic className="h-4 w-4" />
+                </div>
+                <span>{t("voiceNote")}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Standalone Voice Note (Mic) button */}
-          <GatedButton
-            variant="ghost"
-            size="sm"
-            canAct={!readOnly}
-            gateReason="send messages"
-            disabled={inputsDisabled || busy || recording}
-            title={readOnly ? undefined : t("voiceNote")}
-            aria-label={t("voiceNote")}
-            className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-emerald-500 transition-colors"
-            onClick={() => void startRecording()}
-          >
-            <Mic className="h-4 w-4" />
-          </GatedButton>
-
-          {/* + menu — interactive messages + quick replies. Gated on the
-              24h window like free-form text (interactive requires it). */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              disabled={inputsDisabled}
-              title={
-                readOnly
-                  ? t("readOnlyTitle")
-                  : inputsDisabled
-                    ? undefined
-                    : t("moreActions")
-              }
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Plus className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="border-border bg-popover">
-              <DropdownMenuItem onClick={() => openInteractiveBuilder()}>
-                <MessageSquareDashed className="mr-2 h-4 w-4" />
-                {t("interactiveMessage")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setQuickReplyOpen(true)}>
-                <Zap className="mr-2 h-4 w-4" />
-                {t("quickReplies")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <GatedButton
-            variant="ghost"
-            size="sm"
-            canAct={!readOnly}
-            gateReason="send messages"
-            title={readOnly ? undefined : t("sendTemplate")}
-            className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-foreground"
-            onClick={onOpenTemplates}
-          >
-            <LayoutTemplate className="h-4 w-4" />
-          </GatedButton>
-
+          {/* AI Draft [✨] Button */}
           <GatedButton
             variant="ghost"
             size="sm"
@@ -715,7 +704,7 @@ export function MessageComposer({
             gateReason="send messages"
             disabled={drafting}
             title={readOnly ? undefined : t("draftWithAI")}
-            className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-primary"
+            className="h-10 w-10 shrink-0 p-0 rounded-full text-muted-foreground hover:bg-muted hover:text-primary transition-colors"
             onClick={handleDraft}
           >
             {drafting ? (
@@ -725,6 +714,7 @@ export function MessageComposer({
             )}
           </GatedButton>
 
+          {/* Text input area — full width & rounded like WhatsApp */}
           <textarea
             ref={textareaRef}
             value={text}
@@ -737,26 +727,41 @@ export function MessageComposer({
             }
             disabled={readOnly}
             rows={1}
-            // Textarea keeps its own inline title — the GatedButton
-            // wrapping pattern doesn't apply to non-button inputs.
-            // The placeholder text also surfaces the read-only state.
             title={readOnly ? t("readOnlyTitle") : undefined}
             className={cn(
-              "flex-1 min-h-[42px] resize-none rounded-xl border border-border bg-muted px-4 py-2.5 text-sm leading-relaxed text-foreground placeholder-muted-foreground outline-none transition-colors focus:border-primary/50",
+              "flex-1 min-h-[42px] max-h-36 resize-none rounded-2xl border border-border/80 bg-background dark:bg-[#202c33] px-4 py-2.5 text-sm leading-relaxed text-foreground placeholder-muted-foreground outline-none transition-colors focus:border-[#00a884]",
               readOnly && "cursor-not-allowed opacity-50"
             )}
           />
 
-          <GatedButton
-            size="sm"
-            canAct={!readOnly}
-            gateReason="send messages"
-            disabled={!text.trim() || sending}
-            onClick={handleSend}
-            className="h-9 w-9 shrink-0 bg-primary p-0 hover:bg-primary/90 disabled:opacity-40"
-          >
-            <Send className="h-4 w-4" />
-          </GatedButton>
+          {/* WhatsApp-style Action button: Mic if empty, Green Send arrow if text entered */}
+          {text.trim() ? (
+            <GatedButton
+              size="sm"
+              canAct={!readOnly}
+              gateReason="send messages"
+              disabled={!text.trim() || sending}
+              onClick={handleSend}
+              className="h-10 w-10 shrink-0 rounded-full bg-[#00a884] p-0 hover:bg-[#008f6f] text-white shadow-xs cursor-pointer transition-transform active:scale-95"
+              title="Send (Enter)"
+            >
+              <Send className="h-4 w-4 ml-0.5" />
+            </GatedButton>
+          ) : (
+            <GatedButton
+              variant="ghost"
+              size="sm"
+              canAct={!readOnly}
+              gateReason="send messages"
+              disabled={inputsDisabled || busy || recording}
+              title={readOnly ? undefined : t("voiceNote")}
+              aria-label={t("voiceNote")}
+              className="h-10 w-10 shrink-0 rounded-full p-0 text-muted-foreground hover:bg-muted hover:text-[#00a884] dark:hover:text-emerald-400 transition-colors"
+              onClick={() => void startRecording()}
+            >
+              <Mic className="h-5 w-5" />
+            </GatedButton>
+          )}
         </div>
       )}
 

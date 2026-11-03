@@ -74,11 +74,11 @@ function StatusIcon({
     case "sending":
       return <Clock className="h-3 w-3 text-muted-foreground" />;
     case "sent":
-      return <Check className="h-3 w-3 text-muted-foreground" />;
+      return <Check className="h-3 w-3 text-slate-500/80 dark:text-[#8696a0]" />;
     case "delivered":
-      return <CheckCheck className="h-3 w-3 text-muted-foreground" />;
+      return <CheckCheck className="h-3 w-3 text-slate-500/80 dark:text-[#8696a0]" />;
     case "read":
-      return <CheckCheck className="h-3 w-3 text-blue-400" />;
+      return <CheckCheck className="h-3 w-3 text-[#53bdeb]" />;
     case "failed":
       return (
         <span className="inline-flex" title={title ?? undefined}>
@@ -305,10 +305,10 @@ export function MessageBubble({
     >
       <div
         className={cn(
-          "relative rounded-2xl px-3 py-2",
+          "relative rounded-2xl px-3 py-2 text-sm shadow-[0_1px_1px_rgba(0,0,0,0.08)] transition-colors",
           isAgent
-            ? "rounded-br-md bg-primary text-primary-foreground"
-            : "rounded-bl-md bg-muted text-foreground",
+            ? "rounded-tr-xs bg-[#d9fdd3] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef] border border-emerald-500/20 dark:border-emerald-600/20"
+            : "rounded-tl-xs bg-white text-[#111b21] dark:bg-[#202c33] dark:text-[#e9edef] border border-black/5 dark:border-white/5",
         )}
       >
         {reply && (
@@ -326,9 +326,9 @@ export function MessageBubble({
         />
 
         {isAgent && !message.ai_generated && (senderName || roleLabel) ? (
-          <div className="mt-1 flex items-center justify-between gap-3 border-t border-primary-foreground/15 pt-1 text-[11px] leading-tight text-primary-foreground/90">
+          <div className="mt-1 flex items-center justify-between gap-3 border-t border-black/5 dark:border-white/10 pt-1 text-[11px] leading-tight text-slate-600 dark:text-[#8696a0]">
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="truncate max-w-[150px] font-medium opacity-95">
+              <span className="truncate max-w-[140px] font-medium text-[11px] text-slate-700 dark:text-slate-200">
                 {senderName || "Team"}
               </span>
               {roleLabel && (
@@ -336,17 +336,17 @@ export function MessageBubble({
                   className={cn(
                     "inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider",
                     rawRole?.toLowerCase() === "owner"
-                      ? "bg-amber-400/25 text-amber-200 border border-amber-300/30"
+                      ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30"
                       : rawRole?.toLowerCase() === "admin"
-                        ? "bg-sky-400/25 text-sky-200 border border-sky-300/30"
-                        : "bg-primary-foreground/20 text-primary-foreground border border-primary-foreground/25"
+                        ? "bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/30"
+                        : "bg-black/5 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-black/10 dark:border-white/10"
                   )}
                 >
                   {rawRole?.toLowerCase() === "owner" && (
-                    <Crown className="h-2.5 w-2.5 mr-0.5 text-amber-300" />
+                    <Crown className="h-2.5 w-2.5 mr-0.5 text-amber-600 dark:text-amber-300" />
                   )}
                   {rawRole?.toLowerCase() === "admin" && (
-                    <Shield className="h-2.5 w-2.5 mr-0.5 text-sky-300" />
+                    <Shield className="h-2.5 w-2.5 mr-0.5 text-sky-600 dark:text-sky-300" />
                   )}
                   {rawRole?.toLowerCase() !== "owner" &&
                     rawRole?.toLowerCase() !== "admin" && (
@@ -357,7 +357,7 @@ export function MessageBubble({
               )}
             </div>
             <div className="flex items-center gap-1 shrink-0 ml-auto">
-              <span className="text-[10px] text-primary-foreground/75">
+              <span className="text-[10px] text-slate-500 dark:text-[#8696a0]">
                 {time}
               </span>
               <StatusIcon status={message.status} title={failure} />
@@ -372,7 +372,7 @@ export function MessageBubble({
           >
             {message.ai_generated && (
               <span
-                className="inline-flex items-center gap-0.5 rounded-full bg-primary-foreground/20 px-1.5 py-px text-[9px] font-semibold uppercase leading-none tracking-wide text-primary-foreground"
+                className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/20 px-1.5 py-px text-[9px] font-semibold uppercase leading-none tracking-wide text-emerald-700 dark:text-emerald-300"
                 title={t("aiBadgeTitle")}
               >
                 <Sparkles className="h-2.5 w-2.5" />
@@ -384,10 +384,10 @@ export function MessageBubble({
                 className={cn(
                   "inline-flex items-center text-[9px] font-mono px-1 py-0.5 rounded leading-none select-none transition-colors cursor-help",
                   cost.category === "free"
-                    ? "bg-emerald-500/25 text-emerald-300 font-semibold"
+                    ? "bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 font-semibold"
                     : cost.category === "failed"
-                      ? "bg-red-500/20 text-red-200 line-through opacity-80"
-                      : "bg-amber-500/25 text-amber-200 font-semibold"
+                      ? "bg-red-500/20 text-red-600 dark:text-red-200 line-through opacity-80"
+                      : "bg-amber-500/25 text-amber-800 dark:text-amber-200 font-semibold"
                 )}
                 title={cost.description}
               >
@@ -397,7 +397,7 @@ export function MessageBubble({
             <span
               className={cn(
                 "text-[10px]",
-                isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
+                isAgent ? "text-slate-500 dark:text-[#8696a0]" : "text-muted-foreground",
               )}
             >
               {time}
