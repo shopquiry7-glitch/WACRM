@@ -107,6 +107,25 @@ export async function runAutomationsForTrigger(input: DispatchInput): Promise<vo
 
     for (const automation of automations as Automation[]) {
       if (!triggerMatches(automation, input.context)) continue
+
+      // Anti-spam cooldown: for repetitive new_message_received triggers (e.g. Out of Office),
+      // avoid re-sending to the same contact if already sent in the last 60 minutes.
+      if (automation.trigger_type === 'new_message_received' && input.contactId) {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+        const { data: recentRun } = await db
+          .from('automation_logs')
+          .select('id')
+          .eq('automation_id', automation.id)
+          .eq('contact_id', input.contactId)
+          .eq('status', 'success')
+          .gte('created_at', oneHourAgo)
+          .limit(1)
+          .maybeSingle()
+        if (recentRun) {
+          continue
+        }
+      }
+
       try {
         await executeAutomation(automation, input)
       } catch (err) {
@@ -432,7 +451,8 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
 
     case 'add_tag': {
       const cfg = step.step_config as TagStepConfig
-      if (!args.contactId || !cfg.tag_id) throw new Error('add_tag needs contact + tag_id')
+      if (!args.contactId) throw new Error('add_tag needs contact')
+      if (!cfg.tag_id) return 'skipped: no tag_id configured'
       const added = await addContactTagIfAbsent(db, {
         accountId: args.automation.account_id,
         contactId: args.contactId,
@@ -770,8 +790,23 @@ async function evaluateCondition(cfg: ConditionStepConfig, args: ExecuteArgs): P
       // (supports over-midnight ranges like "18:00-09:00").
       const [from, to] = (cfg.operand ?? '').split('-')
       if (!from || !to) return false
-      const now = new Date()
-      const mins = now.getHours() * 60 + now.getMinutes()
+      let hours = new Date().getHours()
+      let minutes = new Date().getMinutes()
+      try {
+        const parts = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Dubai',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).formatToParts(new Date())
+        const hPart = parts.find((p) => p.type === 'hour')?.value
+        const mPart = parts.find((p) => p.type === 'minute')?.value
+        if (hPart && mPart) {
+          hours = parseInt(hPart, 10)
+          minutes = parseInt(mPart, 10)
+        }
+      } catch {}
+      const mins = hours * 60 + minutes
       const parse = (s: string) => {
         const [h, m] = s.split(':').map(Number)
         return (h || 0) * 60 + (m || 0)

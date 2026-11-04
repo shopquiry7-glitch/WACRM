@@ -5,6 +5,13 @@
 @custom-variant dark (&:is(.dark *, [data-mode="dark"] *, html[data-mode="dark"] &));
 
 @theme inline {
+  --color-wa-chat-bg: var(--wa-chat-bg);
+  --color-wa-bubble-out: var(--wa-bubble-out);
+  --color-wa-bubble-out-text: var(--wa-bubble-out-text);
+  --color-wa-bubble-out-border: var(--wa-bubble-out-border);
+  --color-wa-bubble-in: var(--wa-bubble-in);
+  --color-wa-bubble-in-text: var(--wa-bubble-in-text);
+  --color-wa-bubble-in-border: var(--wa-bubble-in-border);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -114,6 +121,13 @@ html[data-mode="dark"] {
   --sidebar-accent: oklch(0.22 0.01 260);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.28 0.01 260);
+  --wa-chat-bg: #0b141a;
+  --wa-bubble-out: #005c4b;
+  --wa-bubble-out-text: #e9edef;
+  --wa-bubble-out-border: rgba(0, 92, 75, 0.4);
+  --wa-bubble-in: #202c33;
+  --wa-bubble-in-text: #e9edef;
+  --wa-bubble-in-border: rgba(32, 44, 51, 0.5);
 }
 
 html[data-mode="light"] {
@@ -143,6 +157,13 @@ html[data-mode="light"] {
   --sidebar-accent: oklch(0.96 0.004 260);
   --sidebar-accent-foreground: oklch(0.25 0.01 260);
   --sidebar-border: oklch(0.922 0.004 260);
+  --wa-chat-bg: #efeae2;
+  --wa-bubble-out: #d9fdd3;
+  --wa-bubble-out-text: #111b21;
+  --wa-bubble-out-border: rgba(0, 168, 132, 0.2);
+  --wa-bubble-in: #ffffff;
+  --wa-bubble-in-text: #111b21;
+  --wa-bubble-in-border: rgba(0, 0, 0, 0.06);
 }
 
 /* ---- ACCENT: primary color ---- */

@@ -307,8 +307,8 @@ export function MessageBubble({
         className={cn(
           "relative rounded-2xl px-3 py-2 text-sm shadow-[0_1px_1px_rgba(0,0,0,0.08)] transition-colors",
           isAgent
-            ? "rounded-tr-xs bg-[#d9fdd3] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef] border border-emerald-500/20 dark:border-emerald-600/20"
-            : "rounded-tl-xs bg-white text-[#111b21] dark:bg-[#202c33] dark:text-[#e9edef] border border-black/5 dark:border-white/5",
+            ? "rounded-tr-xs bg-wa-bubble-out text-wa-bubble-out-text border border-wa-bubble-out-border"
+            : "rounded-tl-xs bg-wa-bubble-in text-wa-bubble-in-text border border-wa-bubble-in-border",
         )}
       >
         {reply && (

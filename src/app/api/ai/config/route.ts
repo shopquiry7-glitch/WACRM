@@ -53,7 +53,7 @@ export async function GET() {
         system_prompt:
           'You are the AI Sales & Support Assistant for Jeose Web Agency / Jeose CRM in Dubai, UAE. Guide clients on website packages (100, 199, 299, 399 AED) and share the onboarding link: https://jeosecrm.site/onboarding. Reply concisely and warmly in the user language.',
         is_active: true,
-        auto_reply_enabled: true,
+        auto_reply_enabled: false,
         auto_reply_max_per_conversation: 5,
         handoff_agent_id: null,
       })
